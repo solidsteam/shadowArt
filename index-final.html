@@ -3,860 +3,270 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>四壁光影投影剪裁模板生成器</title>
+    <title>四壁光影模板生成器</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <!-- GeoGebra 3D 脚本 -->
-    <script src="https://www.geogebra.org/apps/deployggb.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
     <style>
-        :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3a0ca3;
-            --light-color: #f8f9fa;
-            --dark-color: #212529;
-            --success-color: #4cc9f0;
-            --warning-color: #f8961e;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Noto Sans SC', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-            color: var(--dark-color);
-            line-height: 1.6;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
-        }
-        
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 25px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        
-        h1 {
-            color: var(--primary-color);
-            margin-bottom: 10px;
-            font-size: 2.2rem;
-        }
-        
-        .subtitle {
-            color: #666;
-            font-size: 1.1rem;
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        
-        /* 主内容区域 - 左右双栏 */
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-        
-        @media (max-width: 1200px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .card h2 {
-            color: var(--primary-color);
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #eee;
-            font-size: 1.5rem;
-        }
-        
-        /* 左栏样式 */
-        .left-column {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
-        /* 上传区域 */
-        .upload-area {
-            border: 3px dashed #ddd;
-            border-radius: 10px;
-            padding: 40px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .upload-area:hover {
-            border-color: var(--primary-color);
-            background: rgba(67, 97, 238, 0.05);
-        }
-        
-        .upload-area i {
-            font-size: 48px;
-            color: var(--primary-color);
-            margin-bottom: 15px;
-        }
-        
-        .upload-text {
-            font-size: 1.1rem;
-            color: #666;
-            margin-bottom: 10px;
-        }
-        
-        .upload-subtext {
-            font-size: 0.9rem;
-            color: #999;
-        }
-        
-        #file-input {
-            display: none;
-        }
-        
-        /* 预览网格 - 2x2布局 */
-        .preview-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-top: 10px;
-        }
-        
-        .preview-item {
-            border: 1px solid #eee;
-            border-radius: 8px;
-            padding: 10px;
-            background: #f8f9fa;
-            text-align: center;
-        }
-        
-        .preview-item h4 {
-            margin-bottom: 10px;
-            color: #555;
-            font-size: 0.9rem;
-        }
-        
-        canvas {
-            max-width: 100%;
-            border-radius: 6px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-            background: white;
-        }
-        
-        /* 控制区域 */
-        .controls {
-            margin-top: 10px;
-        }
-        
-        .control-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-        }
-        
-        @media (max-width: 768px) {
-            .control-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        .control-group {
-            margin-bottom: 15px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #555;
-        }
-        
-        input[type="range"] {
-            width: 100%;
-            height: 8px;
-            border-radius: 4px;
-            background: #e9ecef;
-            outline: none;
-            -webkit-appearance: none;
-        }
-        
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            cursor: pointer;
-        }
-        
-        input[type="number"] {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #dee2e6;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-family: inherit;
-        }
-        
-        input[type="number"]:focus {
-            border-color: var(--primary-color);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-        
-        .value-display {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 5px;
-        }
-        
-        .value {
-            font-weight: 600;
-            color: var(--primary-color);
-        }
-        
-        .buttons {
-            display: flex;
-            gap: 15px;
-            margin-top: 20px;
-        }
-        
-        .btn {
-            flex: 1;
-            padding: 14px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
-            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
-        }
-        
-        .btn-secondary {
-            background: #e9ecef;
-            color: #495057;
-        }
-        
-        .btn-secondary:hover {
-            background: #dee2e6;
-        }
-        
-        .btn-success {
-            background: var(--success-color);
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background: #3ab8d8;
-            box-shadow: 0 4px 12px rgba(76, 201, 240, 0.3);
-        }
-        
-        .info-box {
-            background: #e7f5ff;
-            border-left: 4px solid var(--primary-color);
-            padding: 15px;
-            border-radius: 0 8px 8px 0;
-            margin-top: 20px;
-            font-size: 0.95rem;
-            color: #495057;
-        }
-        
-        .info-box strong {
-            color: var(--primary-color);
-        }
-        
-        /* 右栏样式 */
-        .right-column {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
-        /* GeoGebra 3D 容器 */
-        #ggb-container {
-            width: 100%;
-            height: 400px;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            overflow: hidden;
-            background: white;
-        }
-        
-        /* 模板预览区域 */
-        .template-preview-container {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .template-thumbnails {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-        }
-        
-        @media (max-width: 768px) {
-            .template-thumbnails {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-        
-        .template-thumb {
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            padding: 8px;
-            background: #f8f9fa;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-        
-        .template-thumb:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        
-        .template-thumb h4 {
-            margin-bottom: 8px;
-            color: #555;
-            font-size: 0.85rem;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .template-thumb canvas {
-            width: 100%;
-            height: 80px;
-            background: white;
-        }
-        
-        .template-actions {
-            display: flex;
-            gap: 15px;
-            margin-top: 10px;
-        }
-        
-        /* 打赏区域 */
-        .sponsorship-container {
-            grid-column: 1 / -1;
-            margin-top: 20px;
-        }
-        
-        .sponsorship-card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        
-        .sponsorship-card h2 {
-            color: var(--warning-color);
-            margin-bottom: 20px;
-            font-size: 1.5rem;
-        }
-        
-        .qr-codes {
-            display: flex;
-            justify-content: center;
-            gap: 40px;
-            flex-wrap: wrap;
-        }
-        
-        .qr-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .qr-item img {
-            max-width: 200px;
-            height: auto;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        
-        .qr-item p {
-            font-size: 1rem;
-            color: #555;
-            font-weight: 500;
-        }
-        
-        /* 其他样式 */
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 30px;
-        }
-        
-        .loading i {
-            font-size: 32px;
-            color: var(--primary-color);
-            margin-bottom: 10px;
-        }
-        
-        .spinner {
-            display: inline-block;
-            width: 2rem;
-            height: 2rem;
-            border: 3px solid rgba(67, 97, 238, 0.3);
-            border-radius: 50%;
-            border-top-color: var(--primary-color);
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        footer {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-            font-size: 0.9rem;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            margin-top: 30px;
-        }
-        
-        .step-indicator {
-            display: flex;
-            justify-content: space-between;
-            margin: 25px 0;
-            position: relative;
-        }
-        
-        .step-indicator::before {
-            content: '';
-            position: absolute;
-            top: 20px;
-            left: 10%;
-            right: 10%;
-            height: 2px;
-            background: #e9ecef;
-            z-index: 1;
-        }
-        
-        .step {
-            position: relative;
-            z-index: 2;
-            text-align: center;
-            flex: 1;
-        }
-        
-        .step-number {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #e9ecef;
-            color: #999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            margin: 0 auto 10px;
-            transition: all 0.3s ease;
-        }
-        
-        .step.active .step-number {
-            background: var(--primary-color);
-            color: white;
-        }
-        
-        .step-label {
-            font-size: 0.9rem;
-            color: #999;
-        }
-        
-        .step.active .step-label {
-            color: var(--primary-color);
-            font-weight: 500;
-        }
-        
-        .param-summary {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 10px;
-            font-size: 0.9rem;
-        }
-        
-        .param-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-        }
-        
-        .param-label {
-            color: #666;
-        }
-        
-        .param-value {
-            font-weight: 600;
-            color: var(--primary-color);
-        }
-        
-        .hidden-canvas-container {
-            position: absolute;
-            left: -9999px;
-            top: -9999px;
-            width: 1px;
-            height: 1px;
-            overflow: hidden;
-        }
+        :root { --primary-color: #4361ee; --secondary-color: #3a0ca3; --success-color: #4cc9f0; --warning-color: #f8961e; --danger-color: #ef233c;}
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Noto Sans SC', sans-serif; background: linear-gradient(135deg, #f5f7fa, #c3cfe2); padding: 20px; color: #212529;}
+        .container { max-width: 1600px; margin: 0 auto; }
+        
+        header { background: white; border-radius: 12px; padding: 20px 25px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .legend-banner { width: 100%; max-height: 180px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; background: #f8f9fa; image-rendering: high-quality; box-shadow: inset 0 0 10px rgba(0,0,0,0.1);}
+        .header-content { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;}
+        .header-title h1 { color: var(--primary-color); font-size: 1.8rem;}
+        .header-title p { color: #666; margin-top: 5px; font-size: 1rem;}
+        
+        .header-donate { display: flex; align-items: center; gap: 10px; position: relative; }
+        .donate-text { font-size: 0.9rem; color: #666; margin-right: 5px; }
+        .donate-btn { padding: 8px 16px; font-size: 0.95rem; border-radius: 20px; border: none; cursor: pointer; color: white; transition: 0.2s; display: flex; align-items: center; gap: 6px;}
+        .donate-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-wx { background: #07c160; }
+        .btn-zfb { background: #1677ff; }
+        .qr-popup { position: absolute; top: 120%; right: 0; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); display: none; z-index: 100;}
+        .qr-popup img { width: 160px; height: 160px; object-fit: cover; border-radius: 4px; display: block;}
+        
+        /* 核心布局优化：左右分栏与右侧吸顶 */
+        .main-content { display: grid; grid-template-columns: 1fr 1.2fr; gap: 30px; align-items: start; }
+        .left-column { display: flex; flex-direction: column; gap: 20px; }
+        .right-column { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 20px; max-height: calc(100vh - 40px); overflow-y: auto; padding-right: 5px;}
+        
+        .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        
+        /* 极致压缩上传区高度 */
+        .upload-compact { display: flex; gap: 15px; align-items: center; }
+        .upload-area { flex: 1; border: 2px dashed #ddd; border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; transition: 0.3s; background: #fafafa;}
+        .upload-area:hover { border-color: var(--primary-color); background: rgba(67, 97, 238, 0.05); }
+        .upload-area i { font-size: 24px; color: var(--primary-color); margin-bottom: 5px; display: block;}
+        .upload-area div { font-size: 0.9rem; color: #666; }
+        
+        .preview-grid { display: flex; gap: 10px; flex: 1;}
+        .preview-item { flex: 1; text-align: center; background: #f8f9fa; padding: 8px; border-radius: 8px; border: 1px solid #eee;}
+        .preview-item h4 { margin-bottom: 5px; color: #555; font-size: 0.8rem; }
+        .preview-item canvas { width: 100%; height: 70px; object-fit: contain; border-radius: 4px; background: white; }
+        
+        /* 精准数值输入的控制网格 */
+        .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;}
+        .control-item { display: flex; flex-direction: column; gap: 5px; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #eee;}
+        .control-item label { font-size: 0.9rem; color: #444; font-weight: 500; display: flex; justify-content: space-between; align-items: center;}
+        .input-group { display: flex; gap: 10px; align-items: center; }
+        .input-group input[type="range"] { flex: 1; cursor: pointer; }
+        .input-group input[type="number"] { width: 70px; padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; font-size: 0.9rem; text-align: center;}
+        .input-group input[type="number"]:focus { outline: none; border-color: var(--primary-color); }
+        
+        .btn { padding: 14px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: 0.2s; font-weight: 500; text-align: center;}
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1);}
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-success { background: var(--success-color); color: white; }
+        
+        #threejs-container { width: 100%; height: 420px; border-radius: 8px; background: #e9ecef; border: 1px solid #ddd; overflow: hidden; cursor: grab;}
+        #threejs-container:active { cursor: grabbing; }
+        
+        .hidden-canvas-container { position: absolute; left: -9999px; overflow: hidden; }
+        .step-indicator { display: flex; justify-content: space-between; margin: 0 0 20px 0; }
+        .step { text-align: center; flex: 1; color: #999; font-size: 0.95rem;}
+        .step.active { color: var(--primary-color); font-weight: bold; }
+        
+        .template-thumbnails { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 15px; }
+        .template-thumb { border: 1px solid #dee2e6; border-radius: 6px; padding: 6px; background: #f8f9fa; text-align: center; }
+        .template-thumb h4 { margin-bottom: 5px; font-size: 0.75rem; color: #555;}
+        .template-thumb canvas { width: 100%; height: 60px; background: white; border: 1px solid #eee; object-fit: contain;}
+        
+        #island-warning { display: none; background: #fff3cd; color: #856404; padding: 12px; border-left: 4px solid #ffeeba; border-radius: 6px; margin-top: 10px; font-size: 0.85rem; }
+        #island-warning ul { margin-top: 5px; padding-left: 20px; }
+        
+        .global-loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px);}
+        .loader-content { text-align: center; max-width: 500px; width: 100%; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        .progress-bar { width: 100%; height: 16px; background: #eee; border-radius: 8px; overflow: hidden; margin: 20px 0; }
+        .progress-fill { height: 100%; background: var(--primary-color); width: 0%; transition: width 0.1s linear; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* 针对右侧滚动条的微调 */
+        .right-column::-webkit-scrollbar { width: 6px; }
+        .right-column::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 3px; }
     </style>
 </head>
 <body>
+    <div class="global-loader" id="global-loader">
+        <div class="loader-content">
+            <div class="spinner"></div>
+            <h2 style="color: var(--primary-color);" id="loader-text">正在生成图纸...</h2>
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+            <p style="font-size: 1.1rem; font-weight: bold; color: #333;" id="progress-text">0%</p>
+        </div>
+    </div>
+
     <div class="container">
         <header>
-            <h1><i class="fas fa-cube"></i> 四壁光影投影剪裁模板生成器</h1>
-            <p class="subtitle">上传任意图片，生成4面墙剪裁模板，拼成立体结构，通过中心光源投影出图像轮廓</p>
+            <img src="legend.png" alt="图解说明" class="legend-banner" onerror="this.style.display='none'">
+            <div class="header-content">
+                <div class="header-title">
+                    <h1><i class="fas fa-cube"></i> 四壁光影模板生成器</h1>
+                    <p>上传图案并输入真实的物理尺寸，一键生成防呆裁切图纸。</p>
+                </div>
+                <div class="header-donate">
+                    <span class="donate-text">觉得好用？请作者喝杯咖啡 ☕</span>
+                    <button class="donate-btn btn-wx" onclick="toggleDonate('wx')"><i class="fab fa-weixin"></i> 微信</button>
+                    <button class="donate-btn btn-zfb" onclick="toggleDonate('zfb')"><i class="fab fa-alipay"></i> 支付宝</button>
+                    <div class="qr-popup" id="qr-popup"><img id="qr-img" src="" alt="收款码"></div>
+                </div>
+            </div>
         </header>
         
         <div class="step-indicator">
-            <div class="step active">
-                <div class="step-number">1</div>
-                <div class="step-label">上传图片</div>
-            </div>
-            <div class="step">
-                <div class="step-number">2</div>
-                <div class="step-label">图像处理</div>
-            </div>
-            <div class="step">
-                <div class="step-number">3</div>
-                <div class="step-label">参数设置</div>
-            </div>
-            <div class="step">
-                <div class="step-number">4</div>
-                <div class="step-label">3D预览</div>
-            </div>
-            <div class="step">
-                <div class="step-number">5</div>
-                <div class="step-label">生成输出</div>
-            </div>
+            <div class="step active">1. 传图与设置</div>
+            <div class="step">2. 光影预览</div>
+            <div class="step">3. 下载图纸</div>
         </div>
         
         <div class="main-content">
-            <!-- 左栏：图像处理与参数设定 -->
             <div class="left-column">
                 <div class="card">
-                    <h2><i class="fas fa-image"></i> 图像处理与参数设置</h2>
-                    
-                    <div class="upload-area" id="upload-area">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <div class="upload-text">点击或拖放图片文件</div>
-                        <div class="upload-subtext">支持 JPG, PNG, GIF 格式，将自动提取轮廓</div>
-                        <input type="file" id="file-input" accept="image/*">
-                    </div>
-                    
-                    <div class="preview-grid">
-                        <div class="preview-item">
-                            <h4>原图预览</h4>
-                            <canvas id="preview-original" width="200" height="150"></canvas>
+                    <div class="upload-compact">
+                        <div class="upload-area" id="upload-area">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <div>点击/拖放换图</div>
+                            <input type="file" id="file-input" accept="image/*" style="display:none;">
                         </div>
-                        <div class="preview-item">
-                            <h4>二值化结果</h4>
-                            <canvas id="preview-binary" width="200" height="150"></canvas>
-                        </div>
-                        <div class="preview-item">
-                            <h4>轮廓提取</h4>
-                            <canvas id="preview-contour" width="200" height="150"></canvas>
-                        </div>
-                        <div class="preview-item">
-                            <h4>平滑轮廓</h4>
-                            <canvas id="preview-smooth" width="200" height="150"></canvas>
+                        <div class="preview-grid">
+                            <div class="preview-item"><h4>① 原图</h4><canvas id="preview-original" width="150" height="100"></canvas></div>
+                            <div class="preview-item"><h4>② 最终图案(黑为影)</h4><canvas id="preview-binary" width="150" height="100"></canvas></div>
                         </div>
                     </div>
                     
-                    <div class="loading" id="loading">
-                        <div class="spinner"></div>
-                        <p>正在处理图像...</p>
-                    </div>
-                    
-                    <div class="controls">
-                        <div class="control-grid">
-                            <div class="control-group">
-                                <label>二值化阈值 <span id="threshold-value" class="value">128</span></label>
+                    <div class="control-grid">
+                        <div class="control-item" style="grid-column: 1 / -1;">
+                            <label>图案细节过滤 (阈值)</label>
+                            <div class="input-group">
                                 <input type="range" id="threshold" min="0" max="255" value="128">
-                                <div class="value-display">
-                                    <span>暗</span>
-                                    <span>亮</span>
-                                </div>
-                            </div>
-                            
-                            <div class="control-group">
-                                <label>平滑程度 <span id="smoothness-value" class="value">5</span></label>
-                                <input type="range" id="smoothness" min="1" max="20" value="5">
-                                <div class="value-display">
-                                    <span>锐利</span>
-                                    <span>平滑</span>
-                                </div>
-                            </div>
-                            
-                            <div class="control-group">
-                                <label>盒子宽度 <span id="box-width-value" class="value">10</span> cm</label>
-                                <input type="range" id="box-width" min="5" max="30" step="0.5" value="10">
-                                <div class="value-display">
-                                    <span>5cm</span>
-                                    <span>30cm</span>
-                                </div>
-                            </div>
-                            
-                            <div class="control-group">
-                                <label>盒子高度 <span id="box-height-value" class="value">10</span> cm</label>
-                                <input type="range" id="box-height" min="5" max="30" step="0.5" value="10">
-                                <div class="value-display">
-                                    <span>5cm</span>
-                                    <span>30cm</span>
-                                </div>
-                            </div>
-                            
-                            <div class="control-group">
-                                <label>盒子深度 <span id="box-depth-value" class="value">10</span> cm</label>
-                                <input type="range" id="box-depth" min="5" max="30" step="0.5" value="10">
-                                <div class="value-display">
-                                    <span>5cm</span>
-                                    <span>30cm</span>
-                                </div>
-                            </div>
-                            
-                            <div class="control-group">
-                                <label>光源高度 <span id="light-height-value" class="value">5</span> cm</label>
-                                <input type="range" id="light-height" min="2" max="20" step="0.5" value="5">
-                                <div class="value-display">
-                                    <span>2cm</span>
-                                    <span>20cm</span>
-                                </div>
-                            </div>
-                            
-                            <div class="control-group">
-                                <label>投影宽度 <span id="shadow-width-value" class="value">30</span> cm</label>
-                                <input type="range" id="shadow-width" min="10" max="150" step="5" value="30">
-                                <div class="value-display">
-                                    <span>10cm</span>
-                                    <span>150cm</span>
-                                </div>
-                            </div>
-                            
-                            <div class="control-group">
-                                <label>采样点数 <span id="sample-count-value" class="value">200</span></label>
-                                <input type="range" id="sample-count" min="50" max="500" step="10" value="200">
-                                <div class="value-display">
-                                    <span>稀疏</span>
-                                    <span>密集</span>
-                                </div>
-                            </div>
-                            
-                            <div class="control-group">
-                                <label>黑白反转</label>
-                                <div style="margin-top: 8px;">
-                                    <button id="toggle-invert" class="btn btn-secondary" style="width:100%; padding:10px;">
-                                        <i class="fas fa-exchange-alt"></i> 切换反转
-                                    </button>
-                                </div>
-                                <div class="value-display">
-                                    <span>状态:</span>
-                                    <span id="auto-invert-value" class="value">自动</span>
-                                </div>
-                            </div>
-                            
-                            <div class="control-group">
-                                <label>盒盖建议</label>
-                                <div style="margin-top: 8px; padding: 10px; background-color: #f8f9fa; border-radius: 6px; border: 1px solid #dee2e6;">
-                                    <p id="lid-recommendation-text" style="margin: 0; font-size: 0.9rem; color: #495057;">上传图像后自动计算建议</p>
-                                </div>
-                                <div class="value-display">
-                                    <span>建议:</span>
-                                    <span id="lid-recommendation-value" class="value">等待计算...</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="buttons">
-                        <button class="btn btn-secondary" id="reset-btn">
-                            <i class="fas fa-redo"></i> 重置
-                        </button>
-                        <button class="btn btn-primary" id="process-btn">
-                            <i class="fas fa-calculator"></i> 计算剪裁曲线
-                        </button>
-                    </div>
-                    
-                    <div class="info-box">
-                        <strong>工作原理：</strong> 工具提取图像轮廓，应用极坐标平滑算法生成平滑闭合曲线，缩放至指定投影宽度，通过空间投影几何反算出四面墙的剪裁曲线。四面墙可拼成立体结构，中心光源投影出目标形状。
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 右栏：3D预览与输出模板 -->
-            <div class="right-column">
-                <div class="card">
-                    <h2><i class="fas fa-cube"></i> 3D 动态预览</h2>
-                    
-                    <div id="ggb-container">
-                        <!-- GeoGebra 3D 视图将在这里渲染 -->
-                        <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999;">
-                            <div style="text-align: center;">
-                                <i class="fas fa-cube" style="font-size: 48px; margin-bottom: 15px;"></i>
-                                <p>计算剪裁曲线后，3D预览将显示在这里</p>
-                                <p style="font-size: 0.9rem; color: #777; margin-top: 10px;">展示光源、投影轮廓和剪裁曲线</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="info-box">
-                        <strong>3D预览说明：</strong> 蓝色点代表光源，红色曲线为底面投影轮廓，彩色曲线为四面墙上的剪裁线。可旋转、缩放视图以观察空间关系。
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2><i class="fas fa-print"></i> 剪裁模板与输出</h2>
-                    
-                    <div class="param-summary" id="param-summary">
-                        <div class="param-row">
-                            <span class="param-label">图像尺寸：</span>
-                            <span class="param-value" id="param-image-size">未加载</span>
-                        </div>
-                        <div class="param-row">
-                            <span class="param-label">轮廓点数：</span>
-                            <span class="param-value" id="param-contour-points">0</span>
-                        </div>
-                        <div class="param-row">
-                            <span class="param-label">采样点数：</span>
-                            <span class="param-value" id="param-sample-points">0</span>
-                        </div>
-                        <div class="param-row">
-                            <span class="param-label">投影宽度：</span>
-                            <span class="param-value" id="param-shadow-width">30 cm</span>
-                        </div>
-                        <div class="param-row">
-                            <span class="param-label">光源高度：</span>
-                            <span class="param-value" id="param-light-height">5 cm</span>
-                        </div>
-                        <div class="param-row">
-                            <span class="param-label">推荐纸张：</span>
-                            <span class="param-value" id="param-paper-size">A4 纵向</span>
-                        </div>
-                    </div>
-                    
-                    <div class="template-preview-container">
-                        <div class="template-thumbnails">
-                            <div class="template-thumb">
-                                <h4>封面页</h4>
-                                <canvas id="thumb-cover" width="150" height="100"></canvas>
-                            </div>
-                            <div class="template-thumb">
-                                <h4>上墙模板</h4>
-                                <canvas id="thumb-top" width="150" height="100"></canvas>
-                            </div>
-                            <div class="template-thumb">
-                                <h4>左墙模板</h4>
-                                <canvas id="thumb-left" width="150" height="100"></canvas>
-                            </div>
-                            <div class="template-thumb">
-                                <h4>下墙模板</h4>
-                                <canvas id="thumb-bottom" width="150" height="100"></canvas>
-                            </div>
-                            <div class="template-thumb">
-                                <h4>右墙模板</h4>
-                                <canvas id="thumb-right" width="150" height="100"></canvas>
+                                <input type="number" id="threshold-num" min="0" max="255" value="128">
                             </div>
                         </div>
                         
-                        <div class="template-actions">
-                            <button class="btn btn-success" id="download-pdf-btn" style="flex: 2;">
-                                <i class="fas fa-file-pdf"></i> 下载PDF模板
-                            </button>
-                            <button class="btn btn-primary" id="print-btn" style="flex: 1;">
-                                <i class="fas fa-print"></i> 直接打印
-                            </button>
+                        <div class="control-item">
+                            <label>纸盒长度 (X) cm</label>
+                            <div class="input-group">
+                                <input type="range" id="box-width" min="5" max="50" step="0.5" value="10">
+                                <input type="number" id="box-width-num" min="5" max="50" step="0.5" value="10">
+                            </div>
+                        </div>
+                        <div class="control-item">
+                            <label>纸盒宽度 (Y) cm</label>
+                            <div class="input-group">
+                                <input type="range" id="box-height" min="5" max="50" step="0.5" value="10">
+                                <input type="number" id="box-height-num" min="5" max="50" step="0.5" value="10">
+                            </div>
+                        </div>
+                        <div class="control-item">
+                            <label>纸盒深度 (Z) cm</label>
+                            <div class="input-group">
+                                <input type="range" id="box-depth" min="5" max="40" step="0.5" value="10">
+                                <input type="number" id="box-depth-num" min="5" max="40" step="0.5" value="10">
+                            </div>
+                        </div>
+                        <div class="control-item">
+                            <label>灯泡离底高度 cm</label>
+                            <div class="input-group">
+                                <input type="range" id="light-height" min="1" max="40" step="0.5" value="5">
+                                <input type="number" id="light-height-num" min="1" max="40" step="0.5" value="5">
+                            </div>
+                        </div>
+
+                        <div class="control-item">
+                            <label>灯泡 X轴 平移 cm</label>
+                            <div class="input-group">
+                                <input type="range" id="light-x" min="-5" max="5" step="0.1" value="0">
+                                <input type="number" id="light-x-num" min="-5" max="5" step="0.1" value="0">
+                            </div>
+                        </div>
+                        <div class="control-item">
+                            <label>灯泡 Y轴 平移 cm</label>
+                            <div class="input-group">
+                                <input type="range" id="light-y" min="-5" max="5" step="0.1" value="0">
+                                <input type="number" id="light-y-num" min="-5" max="5" step="0.1" value="0">
+                            </div>
+                        </div>
+
+                        <div class="control-item" style="grid-column: 1 / -1;">
+                            <label>投影墙面高度 cm <span style="font-weight:normal; color:#888;">(决定最终投射在墙上的图案大小)</span></label>
+                            <div class="input-group">
+                                <input type="range" id="shadow-height" min="10" max="280" step="5" value="50">
+                                <input type="number" id="shadow-height-num" min="10" max="280" step="5" value="50">
+                            </div>
+                        </div>
+
+                        <div style="grid-column: 1 / -1; display:flex; gap:15px; background:#e0e7ff; padding:15px; border-radius:8px; align-items: center;">
+                            <div style="flex:1;">
+                                <label style="font-size: 0.9rem; font-weight: bold; color: var(--primary-color);">光影设定 (<span id="auto-invert-value">自动</span>)</label>
+                                <button id="toggle-invert" class="btn" style="width:100%; background:white; color: #333; border: 1px solid #ccc; margin-top:8px;"><i class="fas fa-exchange-alt"></i> 反转黑白</button>
+                            </div>
+                            <div style="flex:1.5; border-left: 2px solid #c7d2fe; padding-left: 15px;">
+                                <label style="font-size: 0.9rem; font-weight: bold; color: var(--primary-color);">💡 纸盒封顶建议</label>
+                                <p id="lid-recommendation-value" style="font-weight:bold; margin: 5px 0;">等待图片...</p>
+                                <p id="lid-recommendation-text" style="font-size:0.8rem; color:#666; margin: 0; line-height: 1.4;">（根据中心区域明暗自动判断）</p>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="info-box">
-                        <strong>使用说明：</strong> 下载的PDF包含5页：封面说明 + 4张剪裁模板。按模板剪裁，拼成立体四面墙结构，在中心上方放置光源，即可在底面投影出目标形状。
-                    </div>
+                    <button class="btn btn-primary" id="process-btn" style="width: 100%; margin-top: 20px; font-size:1.1rem; padding: 16px;"><i class="fas fa-magic"></i> 渲染 3D 预览与剪裁图纸</button>
                 </div>
             </div>
             
-            <!-- 底部通栏：打赏区 -->
-            <div class="sponsorship-container">
-                <div class="sponsorship-card">
-                    <h2><i class="fas fa-coffee"></i> 支持开发者 (Buy me a coffee)</h2>
-                    <div class="qr-codes">
-                        <div class="qr-item">
-                            <img src="./wechat_pay.png" alt="微信赞赏码" onerror="this.style.display='none'">
-                            <p>微信赞赏</p>
-                        </div>
-                        <div class="qr-item">
-                            <img src="./alipay.png" alt="支付宝赞赏码" onerror="this.style.display='none'">
-                            <p>支付宝赞赏</p>
-                        </div>
+            <div class="right-column">
+                <div class="card">
+                    <h2 style="font-size: 1.2rem; margin-bottom: 10px;"><i class="fas fa-eye"></i> 实时 3D 预览</h2>
+                    <p style="font-size:0.8rem; color:#666; margin-bottom:10px;">调节左侧数值，右侧即时响应。鼠标左键旋转，滚轮缩放。</p>
+                    <div id="threejs-container"></div>
+                </div>
+                
+                <div class="card">
+                    <h2 style="font-size: 1.2rem; margin-bottom: 10px;"><i class="fas fa-print"></i> 1:1 打印图纸输出</h2>
+                    
+                    <div id="island-warning">
+                        <strong><i class="fas fa-exclamation-triangle"></i> 提示：图案中有悬空部分！</strong>
+                        <p style="margin-top: 3px;">图纸上红色的部分在裁切时会直接掉落。建议反转黑白重试，或在剪纸时手工留纸条相连。</p>
                     </div>
-                    <p style="margin-top: 20px; color: #666; font-size: 0.9rem;">如果这个工具对您有帮助，请考虑支持开发者的工作。您的支持将帮助我们持续改进工具！</p>
+
+                    <div class="template-thumbnails">
+                        <div class="template-thumb"><h4>配置说明</h4><canvas id="thumb-cover"></canvas></div>
+                        <div class="template-thumb"><h4>上边</h4><canvas id="thumb-top"></canvas></div>
+                        <div class="template-thumb"><h4>左边</h4><canvas id="thumb-left"></canvas></div>
+                        <div class="template-thumb"><h4>下边</h4><canvas id="thumb-bottom"></canvas></div>
+                        <div class="template-thumb"><h4>右边</h4><canvas id="thumb-right"></canvas></div>
+                    </div>
+
+                    <button class="btn btn-success" id="download-pdf-btn" style="width: 100%; margin-top: 15px;"><i class="fas fa-file-pdf"></i> 下载 PDF 打印图纸 (A4规格)</button>
                 </div>
             </div>
         </div>
-        
-        <footer>
-            <p>四壁光影投影剪裁模板生成器 &copy; 2023-2026 | 设计原理：极坐标平滑 + 空间投影几何 | 基于网页技术，无需安装</p>
-            <p style="font-size: 0.8rem; margin-top: 5px; color: #999;">输出：5页PDF（封面 + 4张模板） | 四面墙结构：上、左、下、右 | 光源：中心上方可调高度</p>
-        </footer>
     </div>
     
-    <!-- 隐藏的画布用于PDF生成 -->
-    <div class="hidden-canvas-container">
-        <canvas id="pdf-cover-canvas"></canvas>
-        <canvas id="pdf-top-canvas"></canvas>
-        <canvas id="pdf-left-canvas"></canvas>
-        <canvas id="pdf-bottom-canvas"></canvas>
-        <canvas id="pdf-right-canvas"></canvas>
+    <div class="hidden-canvas-container" id="hidden-canvases">
+        <canvas id="pdf-cover-canvas"></canvas><canvas id="pdf-top-canvas"></canvas>
+        <canvas id="pdf-left-canvas"></canvas><canvas id="pdf-bottom-canvas"></canvas><canvas id="pdf-right-canvas"></canvas>
     </div>
     
-    <!-- 引入PDF生成库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    
     <script src="app-final.js"></script>
+    <script>
+        function toggleDonate(type) {
+            const popup = document.getElementById('qr-popup');
+            const img = document.getElementById('qr-img');
+            if (popup.style.display === 'block' && img.src.includes(type)) {
+                popup.style.display = 'none';
+            } else {
+                img.src = type === 'wx' ? './qr_wx.png' : './qr_zfb.png';
+                popup.style.display = 'block';
+            }
+        }
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.header-donate')) document.getElementById('qr-popup').style.display = 'none';
+        });
+    </script>
 </body>
 </html>
