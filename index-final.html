@@ -21,7 +21,7 @@
         .header-title h1 { color: var(--primary-color); font-size: 1.8rem;}
         .header-title p { color: #666; margin-top: 5px; font-size: 1rem;}
         
-        .header-donate { display: flex; align-items: center; gap: 10px; position: relative; }
+        .header-donate { display: flex; align-items: center; gap: 10px; position: relative; flex-wrap: wrap;}
         .donate-text { font-size: 0.9rem; color: #666; margin-right: 5px; }
         .donate-btn { padding: 8px 16px; font-size: 0.95rem; border-radius: 20px; border: none; cursor: pointer; color: white; transition: 0.2s; display: flex; align-items: center; gap: 6px;}
         .donate-btn:hover { opacity: 0.9; transform: translateY(-1px); }
@@ -93,6 +93,33 @@
         .close-btn { position: absolute; top: 20px; right: 35px; color: white; font-size: 40px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .close-btn:hover { color: var(--primary-color); }
         #modal-caption { margin: auto; display: block; width: 80%; text-align: center; color: white; padding: 15px 0; font-size: 1.2rem; }
+
+        /* ======== 移动端与响应式布局 ======== */
+        @media (max-width: 1024px) {
+            body { padding: 10px; }
+            .main-content { display: flex; flex-direction: column-reverse; gap: 20px; }
+            .right-column { position: static; max-height: none; overflow: visible; padding-right: 0;}
+            /* 使 3D 预览区在手机上下滑时吸顶，方便实时查看光影变化 */
+            .right-column .card:first-child { position: sticky; top: 10px; z-index: 90; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 2px solid var(--primary-color);}
+            
+            .left-column { gap: 15px; }
+            .control-grid { grid-template-columns: 1fr; }
+            .template-thumbnails { grid-template-columns: repeat(3, 1fr); gap: 10px;}
+            
+            header { padding: 15px; margin-bottom: 15px; }
+            .header-title h1 { font-size: 1.5rem; }
+            .header-donate { width: 100%; margin-top: 10px; justify-content: flex-start; }
+            
+            #threejs-container { height: 320px; }
+            .qr-popup { top: auto; bottom: 120%; }
+        }
+        
+        @media (max-width: 480px) {
+            .upload-compact { flex-direction: column; align-items: stretch; }
+            .template-thumbnails { grid-template-columns: repeat(2, 1fr); }
+            .step { font-size: 0.8rem; }
+            #threejs-container { height: 260px; }
+        }
     </style>
 </head>
 <body>
@@ -210,16 +237,9 @@
                             </div>
                         </div>
 
-                        <div style="grid-column: 1 / -1; display:flex; gap:15px; background:#e0e7ff; padding:15px; border-radius:8px; align-items: center;">
-                            <div style="flex:1;">
-                                <label style="font-size: 0.9rem; font-weight: bold; color: var(--primary-color);">光影设定 (<span id="auto-invert-value">自动</span>)</label>
-                                <button id="toggle-invert" class="btn" style="width:100%; background:white; color: #333; border: 1px solid #ccc; margin-top:8px;"><i class="fas fa-exchange-alt"></i> 反转黑白</button>
-                            </div>
-                            <div style="flex:1.5; border-left: 2px solid #c7d2fe; padding-left: 15px;">
-                                <label style="font-size: 0.9rem; font-weight: bold; color: var(--primary-color);">💡 纸盒封顶建议</label>
-                                <p id="lid-recommendation-value" style="font-weight:bold; margin: 5px 0;">等待图片...</p>
-                                <p id="lid-recommendation-text" style="font-size:0.8rem; color:#666; margin: 0; line-height: 1.4;">（根据图案中心明暗自动判断）</p>
-                            </div>
+                        <div class="control-item" style="grid-column: 1 / -1; display:flex; flex-direction:row; gap:15px; background:#e0e7ff; padding:15px; border-radius:8px; align-items: center; justify-content: space-between;">
+                            <label style="font-size: 1rem; font-weight: bold; color: var(--primary-color);">光影设定 (<span id="auto-invert-value">自动</span>)</label>
+                            <button id="toggle-invert" class="btn" style="flex: 1; max-width: 250px; background:white; color: #333; border: 1px solid #ccc; padding: 10px;"><i class="fas fa-exchange-alt"></i> 反转黑白</button>
                         </div>
                     </div>
                     
@@ -238,7 +258,7 @@
                     <h2 style="font-size: 1.2rem; margin-bottom: 10px;"><i class="fas fa-print"></i> 打印图纸输出</h2>
                     
                     <div id="island-warning">
-                        <strong><i class="fas fa-exclamation-triangle"></i> 提示：图案中有悬空部分！</strong>
+                        <strong><i class="fas fa-exclamation-triangle"></i> 提示：侧壁图案中有悬空部分！</strong>
                         <p style="margin-top: 3px;">图纸上红色的部分在剪裁时会完全掉落。建议反转黑白，或在剪纸时手工留点纸条连着。</p>
                     </div>
 

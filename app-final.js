@@ -1,4 +1,4 @@
-/* 四壁光影模板生成器 - 完整闭环与大图预览版 */
+/* 四壁光影模板生成器 - 完整闭环与大图预览版 (包含底板优化与水印) */
 
 class FourWallShadowCutter {
     constructor() {
@@ -6,12 +6,11 @@ class FourWallShadowCutter {
         this.binaryImageData = null;
         
         this.wallTextures = []; // 0:上, 1:左, 2:下, 3:右
-        this.baseTexture = null; // 新增：盒子覆盖在底面上的图案
+        this.baseTexture = null; 
         
         this.isFirstLoad = true;
         this.shouldInvert = false;
         this.isCalculating = false;
-        this.lidRecommendation = "等待图片...";
         this.hasIslandWarning = false;
         
         this.tScene = null; this.tCamera = null; this.tRenderer = null;
@@ -90,9 +89,7 @@ class FourWallShadowCutter {
         document.getElementById('process-btn').addEventListener('click', () => this.startCalculation());
         document.getElementById('download-pdf-btn').addEventListener('click', () => this.generatePDF());
         
-        // 绑定点击查看大图
         this.bindThumbnailClicks();
-
         this.updateLightLimits(); 
         this.updateSteps(1);
         this.initThreeJS();
@@ -100,7 +97,7 @@ class FourWallShadowCutter {
 
     bindThumbnailClicks() {
         const thumbBtnIds = ['thumb-btn-base', 'thumb-btn-top', 'thumb-btn-left', 'thumb-btn-bottom', 'thumb-btn-right'];
-        const titles = ['盒子底面裁切图', '上边墙裁切图', '左边墙裁切图', '下边墙裁切图', '右边墙裁切图'];
+        const titles = ['盒子底面图案图纸', '上边墙裁切图纸', '左边墙裁切图纸', '下边墙裁切图纸', '右边墙裁切图纸'];
         
         thumbBtnIds.forEach((btnId, idx) => {
             const btn = document.getElementById(btnId);
@@ -123,7 +120,6 @@ class FourWallShadowCutter {
         const ctx = canvas.getContext('2d');
         ctx.putImageData(imageData, 0, 0);
         
-        // 画一圈红色的边界线，方便用户在纯白背景下看清纸板的边缘
         ctx.strokeStyle = '#ef233c';
         ctx.lineWidth = Math.max(1, Math.ceil(imageData.width / 200));
         ctx.strokeRect(0, 0, canvas.width, canvas.height);
@@ -168,6 +164,8 @@ class FourWallShadowCutter {
                 requestAnimationFrame(() => {
                     this.isFirstLoad = true;
                     this.processImage();
+                    // 自动触发展示功能，免去用户首屏点“生成”的步骤
+                    this.startCalculation(); 
                 });
             });
         };
@@ -257,6 +255,7 @@ class FourWallShadowCutter {
         this.tScene.add(this.tRaysGroup);
 
         window.addEventListener('resize', () => {
+            if(container.clientWidth === 0) return;
             this.tCamera.aspect = container.clientWidth / container.clientHeight;
             this.tCamera.updateProjectionMatrix();
             this.tRenderer.setSize(container.clientWidth, container.clientHeight);
@@ -489,7 +488,6 @@ class FourWallShadowCutter {
         }
         
         this.drawPreviewImageData('preview-binary', this.binaryImageData);
-        this.checkCenterRegion();
         this.updateThreeJSBox(); 
         this.updateSteps(2);
     }
@@ -512,36 +510,6 @@ class FourWallShadowCutter {
         
         this.shouldInvert = (edgeWhiteCount / edgeTotalCount) < 0.5;
         document.getElementById('auto-invert-value').textContent = this.shouldInvert ? '已反转' : '默认';
-    }
-    
-    checkCenterRegion() {
-        const data = this.binaryImageData.data;
-        const w = this.binaryImageData.width, h = this.binaryImageData.height;
-        const cx = Math.floor(w / 2), cy = Math.floor(h / 2);
-        const radius = Math.floor(Math.min(w, h) * 0.05);
-        
-        let darkCount = 0, totalCount = 0;
-        for (let y = cy - radius; y <= cy + radius; y++) {
-            for (let x = cx - radius; x <= cx + radius; x++) {
-                if (x >= 0 && x < w && y >= 0 && y < h) {
-                    if (data[(y * w + x) * 4] === 0) darkCount++;
-                    totalCount++;
-                }
-            }
-        }
-        
-        const centerIsDark = darkCount / totalCount > 0.5;
-        this.lidRecommendation = centerIsDark ? "建议封起顶部" : "顶部留空即可";
-        const valEl = document.getElementById('lid-recommendation-value');
-        const txtEl = document.getElementById('lid-recommendation-text');
-        
-        if (centerIsDark) {
-            valEl.textContent = "必须把盒子顶部封起来"; valEl.style.color = "#ef233c";
-            txtEl.textContent = "中央区域需要阴影，因此必须遮挡正上方直射的光线。";
-        } else {
-            valEl.textContent = "顶部镂空敞开即可"; valEl.style.color = "#4cc9f0";
-            txtEl.textContent = "中央区域要求明亮，顶部需要让光线直接透过去。";
-        }
     }
     
     drawPreviewCanvas(id, imageSource) {
@@ -707,6 +675,7 @@ class FourWallShadowCutter {
                 await new Promise(res => setTimeout(res, 0));
             }
             
+            // 四壁的孤岛检测
             if (this.detectAndHighlightIslands(wallImg)) {
                 this.hasIslandWarning = true;
             }
@@ -714,7 +683,7 @@ class FourWallShadowCutter {
             this.wallTextures.push(wallImg);
         }
 
-        // ================= 新增：生成盒子底面的图纸 =================
+        // 生成盒子底面的图纸 (无需孤岛检测，因为底板只是贴纸或垫板)
         if (this.isCalculating) {
             const wBasePx = Math.ceil(boxW * pxPerCm);
             const hBasePx = Math.ceil(boxH * pxPerCm);
@@ -741,10 +710,7 @@ class FourWallShadowCutter {
                     baseImg.data[dIdx+3] = 255;
                 }
             }
-            // 对底面也进行一次孤岛检查
-            if (this.detectAndHighlightIslands(baseImg)) {
-                this.hasIslandWarning = true;
-            }
+            // 移除了底面的悬空判定，因为底面不适用“抠除”逻辑。
             this.baseTexture = baseImg;
         }
         
@@ -841,14 +807,13 @@ class FourWallShadowCutter {
         const lx = document.getElementById('light-x').value;
         const ly = document.getElementById('light-y').value;
         txt(`灯泡平面位置: X偏移 ${lx} cm, Y偏移 ${ly} cm`);
-        txt(`拼装建议: ${this.lidRecommendation}`);
         
         y += 15 * dpi/25.4;
         txt('【 剪裁说明 】', '#ef233c');
         txt('1. 【灰色区域】：保留纸板，不要剪。');
         txt('2. 【白色区域】：用刻刀全部掏空，让光透出去。');
         if (this.hasIslandWarning) {
-            txt('3. 【红色区域】：提示！这是悬空的图案，全剪会掉下来。', '#ef233c');
+            txt('3. 【红色区域】：提示！这是侧壁悬空的图案，全剪会掉下来。', '#ef233c');
             txt('   剪的时候必须留一条纸连着，或者用透明胶带从背面固定！', '#ef233c');
         }
         
@@ -857,6 +822,15 @@ class FourWallShadowCutter {
         txt('本PDF包含 6 页（封面 + 1张底面 + 4张侧墙）。', '#333');
         txt('本图纸已严格按 1:1 比例生成。打印时请务必在打印机设置中', '#333');
         txt('选择【实际大小】或【100% 缩放】。绝不要选择“适应纸张”！', '#333');
+
+        // ======== 添加 PDF 水印声明 ========
+        y = hPX - 35 * dpi/25.4;
+        ctx.fillStyle = '#888888';
+        ctx.font = `italic ${10 * dpi/72}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillText('Powered by SolidSteam\'s ShadowArt Tool', wPX/2, y);
+        ctx.fillText('如果这个工具帮到了您，欢迎回到网页端打赏支持作者！', wPX/2, y + 6 * dpi/25.4);
+        ctx.fillText('GitHub: https://github.com/solidsteam/shadowArt', wPX/2, y + 12 * dpi/25.4);
         
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 210, 297);
     }
@@ -888,6 +862,10 @@ class FourWallShadowCutter {
         
         ctx.fillStyle = '#d90429'; ctx.font = `bold ${12 * dpi/72}px Arial`; ctx.textAlign = 'center';
         ctx.fillText(`↑ 盒子底面图案 (可垫在盒子下方或贴于外部) ↑`, wPX/2, offsetY - 5 * scalePX);
+
+        // ======== 添加 PDF 水印声明 ========
+        ctx.fillStyle = '#999999'; ctx.font = `italic ${9 * dpi/72}px Arial`;
+        ctx.fillText('Powered by SolidSteam\'s ShadowArt Tool | 欢迎在网页端打赏支持作者', wPX/2, hPX - 10 * scalePX);
         
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, widthMM, heightMM);
     }
@@ -923,6 +901,10 @@ class FourWallShadowCutter {
         ctx.fillStyle = '#d90429'; ctx.font = `bold ${12 * dpi/72}px Arial`; ctx.textAlign = 'center';
         const names = ['上边墙', '左边墙', '下边墙', '右边墙'];
         ctx.fillText(`↑ 这一边靠近盒子的顶部大开口/盖子处 (${names[wallIndex]}) ↑`, wPX/2, offsetY - 5 * scalePX);
+
+        // ======== 添加 PDF 水印声明 ========
+        ctx.fillStyle = '#999999'; ctx.font = `italic ${9 * dpi/72}px Arial`;
+        ctx.fillText('Powered by SolidSteam\'s ShadowArt Tool | 欢迎在网页端打赏支持作者', wPX/2, hPX - 10 * scalePX);
         
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, widthMM, heightMM);
     }
