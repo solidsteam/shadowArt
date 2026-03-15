@@ -1,10 +1,9 @@
-/* 四壁光影模板生成器 - 完整闭环与大图预览版 (包含底板优化与水印) */
+/* 四壁光影模板生成器 - i18n 双语支持版 */
 
 class FourWallShadowCutter {
     constructor() {
         this.originalImage = null;
         this.binaryImageData = null;
-        
         this.wallTextures = []; // 0:上, 1:左, 2:下, 3:右
         this.baseTexture = null; 
         
@@ -18,11 +17,105 @@ class FourWallShadowCutter {
         this.tShadowBox = null; this.tActualShadow = null; this.tRaysGroup = null;
         this.tLabels = []; 
         
+        // ======== i18n Dictionary ========
+        this.currentLang = 'zh'; // Default
+        this.i18n = {
+            zh: {
+                app_title: "光影纸盒图纸生成器",
+                app_subtitle: "上传图案并输入盒子尺寸，一键生成裁切图纸。",
+                donate_text: "觉得好用？请作者喝杯咖啡 ☕",
+                wechat: "微信", alipay: "支付宝",
+                step_1: "1. 传图与设置", step_2: "2. 光影预览", step_3: "3. 下载打印",
+                upload_text: "点击/拖放换图",
+                preview_orig: "① 原图", preview_bin: "② 提取影子(黑块)",
+                lbl_threshold: "图案细节过滤", lbl_box_w: "纸盒长度 (X) cm", lbl_box_h: "纸盒宽度 (Y) cm", lbl_box_d: "纸盒深度 (Z) cm",
+                lbl_light_h: "灯泡离底高度 cm", lbl_light_x: "灯泡 X轴 偏移 cm", lbl_light_y: "灯泡 Y轴 偏移 cm",
+                lbl_shadow_h: "投影墙面高度 cm", lbl_shadow_desc: "(决定最终投射在墙上的图案大小)",
+                lbl_invert: "光影设定", lbl_invert_auto: "自动", btn_invert: "反转黑白",
+                btn_generate: "生成预览与图纸",
+                title_preview: "效果预览", desc_preview: "调节左侧数值，右侧即时响应。鼠标左键可旋转，滚轮可缩放。",
+                title_print: "打印图纸输出",
+                warn_title: "提示：侧壁图案中有悬空部分！", warn_desc: "图纸上红色的部分在剪裁时会完全掉落。建议反转黑白，或在剪纸时手工留点纸条连着。",
+                thumb_base: "盒子底面", thumb_top: "上边墙", thumb_left: "左边墙", thumb_bot: "下边墙", thumb_right: "右边墙",
+                btn_pdf: "下载 PDF 打印图纸",
+                // JS specific keys
+                loader_text: "正在生成图纸...", loader_pdf: "正在拼装 A4 图纸...",
+                alert_no_img: "请先上传图片！", alert_no_pdf: "请先生成图纸！",
+                status_inverted: "已反转", status_default: "默认",
+                modal_t_base: "盒子底面图案图纸", modal_t_top: "上边墙裁切图纸", modal_t_left: "左边墙裁切图纸", modal_t_bot: "下边墙裁切图纸", modal_t_right: "右边墙裁切图纸",
+                pdf_title: "光影纸盒裁切图纸", pdf_cut_inst: "【 剪裁说明 】", pdf_grey: "1. 【灰色区域】：保留纸板，不要剪。", pdf_white: "2. 【白色区域】：用刻刀全部掏空，让光透出去。",
+                pdf_red_1: "3. 【红色区域】：提示！这是侧壁悬空的图案，全剪会掉下来。", pdf_red_2: "   剪的时候必须留一条纸连着，或者用透明胶带从背面固定！",
+                pdf_print_warn: "⚠️ 打印属性提示：", pdf_print_1: "本PDF包含 6 页（封面 + 1张底面 + 4张侧墙）。", pdf_print_2: "本图纸已严格按 1:1 比例生成。打印时请务必在打印机设置中", pdf_print_3: "选择【实际大小】或【100% 缩放】。绝不要选择“适应纸张”！",
+                pdf_watermark: "如果这个工具帮到了您，欢迎回到网页端打赏支持作者！", pdf_base_desc: "↑ 盒子底面图案 (可垫在盒子下方或贴于外部) ↑", pdf_wall_desc: "↑ 这一边靠近盒子的顶部大开口/盖子处 ({0}) ↑",
+                label_top: "上", label_left: "左", label_bot: "下", label_right: "右"
+            },
+            en: {
+                app_title: "Shadow Box Template Generator",
+                app_subtitle: "Upload an image & input dimensions to generate 1:1 cut templates.",
+                donate_text: "Find this useful? Buy me a coffee ☕",
+                wechat: "WeChat", alipay: "Alipay",
+                step_1: "1. Upload & Setup", step_2: "2. 3D Preview", step_3: "3. Download PDF",
+                upload_text: "Click/Drag to Upload",
+                preview_orig: "① Original", preview_bin: "② Extracted Shadow",
+                lbl_threshold: "Detail Threshold", lbl_box_w: "Box Length (X) cm", lbl_box_h: "Box Width (Y) cm", lbl_box_d: "Box Depth (Z) cm",
+                lbl_light_h: "Light Height cm", lbl_light_x: "Light X-Offset cm", lbl_light_y: "Light Y-Offset cm",
+                lbl_shadow_h: "Projection Wall Height cm", lbl_shadow_desc: "(Determines final pattern size on wall)",
+                lbl_invert: "Light/Shadow", lbl_invert_auto: "Auto", btn_invert: "Invert B/W",
+                btn_generate: "Generate Preview & Templates",
+                title_preview: "3D Preview", desc_preview: "Adjust sliders to see real-time changes. Left-click to rotate, scroll to zoom.",
+                title_print: "Printable Templates",
+                warn_title: "Warning: Floating 'Islands' Detected!", warn_desc: "Red areas will fall out when cut. Try inverting B/W, or manually leave connecting paper tabs.",
+                thumb_base: "Base Pattern", thumb_top: "Top Wall", thumb_left: "Left Wall", thumb_bot: "Bottom Wall", thumb_right: "Right Wall",
+                btn_pdf: "Download PDF Templates",
+                // JS specific keys
+                loader_text: "Generating templates...", loader_pdf: "Assembling A4 PDF...",
+                alert_no_img: "Please upload an image first!", alert_no_pdf: "Please generate templates first!",
+                status_inverted: "Inverted", status_default: "Default",
+                modal_t_base: "Base Pattern Template", modal_t_top: "Top Wall Template", modal_t_left: "Left Wall Template", modal_t_bot: "Bottom Wall Template", modal_t_right: "Right Wall Template",
+                pdf_title: "Shadow Box Cut Templates", pdf_cut_inst: "[ Cutting Instructions ]", pdf_grey: "1. [GREY AREA]: Keep this cardboard intact.", pdf_white: "2. [WHITE AREA]: Cut out completely to let light pass.",
+                pdf_red_1: "3. [RED AREA]: Warning! Floating islands detected. Will fall out.", pdf_red_2: "   Leave connecting tabs or tape them from behind!",
+                pdf_print_warn: "⚠️ Print Settings Warning:", pdf_print_1: "This PDF contains 6 pages (Cover + 1 Base + 4 Walls).", pdf_print_2: "Templates are strictly 1:1 scale. In your printer settings,", pdf_print_3: "choose 'Actual Size' or '100% Scale'. NEVER 'Fit to Page'!",
+                pdf_watermark: "If this tool helped you, consider supporting the author on the website!", pdf_base_desc: "↑ Base Pattern (Place under box or stick outside) ↑", pdf_wall_desc: "↑ This edge faces the top opening of the box ({0}) ↑",
+                label_top: "Top", label_left: "Left", label_bot: "Bot", label_right: "Right"
+            }
+        };
+
         this.initUI();
         this.loadDefaultImage(); 
     }
     
+    t(key) { return this.i18n[this.currentLang][key]; }
+
+    toggleLanguage() {
+        this.currentLang = this.currentLang === 'zh' ? 'en' : 'zh';
+        const btn = document.getElementById('lang-toggle-btn');
+        btn.innerHTML = `<i class="fas fa-language"></i> ${this.currentLang === 'zh' ? 'EN' : '中文'}`;
+        
+        // Update static HTML texts
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if(this.i18n[this.currentLang][key]) {
+                el.innerText = this.i18n[this.currentLang][key];
+            }
+        });
+        
+        // Update dynamic states
+        document.getElementById('auto-invert-value').textContent = this.shouldInvert ? this.t('status_inverted') : this.t('status_default');
+        
+        // Update 3D Labels
+        if(this.tLabels.length > 0) {
+            const labels = [this.t('label_top'), this.t('label_left'), this.t('label_bot'), this.t('label_right')];
+            for (let i = 0; i < 4; i++) {
+                const newSprite = this.createTextSprite(labels[i]);
+                this.tLabels[i].material.map = newSprite.material.map;
+                this.tLabels[i].material.needsUpdate = true;
+            }
+        }
+    }
+
     initUI() {
+        document.getElementById('lang-toggle-btn').addEventListener('click', () => this.toggleLanguage());
+
         const uploadArea = document.getElementById('upload-area');
         const fileInput = document.getElementById('file-input');
         
@@ -79,7 +172,7 @@ class FourWallShadowCutter {
         
         document.getElementById('toggle-invert').addEventListener('click', () => {
             this.shouldInvert = !this.shouldInvert;
-            document.getElementById('auto-invert-value').textContent = this.shouldInvert ? '已反转' : '默认';
+            document.getElementById('auto-invert-value').textContent = this.shouldInvert ? this.t('status_inverted') : this.t('status_default');
             if (this.originalImage) {
                 this.isFirstLoad = false;
                 this.processImage();
@@ -97,14 +190,14 @@ class FourWallShadowCutter {
 
     bindThumbnailClicks() {
         const thumbBtnIds = ['thumb-btn-base', 'thumb-btn-top', 'thumb-btn-left', 'thumb-btn-bottom', 'thumb-btn-right'];
-        const titles = ['盒子底面图案图纸', '上边墙裁切图纸', '左边墙裁切图纸', '下边墙裁切图纸', '右边墙裁切图纸'];
+        const titleKeys = ['modal_t_base', 'modal_t_top', 'modal_t_left', 'modal_t_bot', 'modal_t_right'];
         
         thumbBtnIds.forEach((btnId, idx) => {
             const btn = document.getElementById(btnId);
             btn.addEventListener('click', () => {
                 let textureData = idx === 0 ? this.baseTexture : this.wallTextures[idx - 1];
                 if (!textureData) return;
-                this.openModal(titles[idx], textureData);
+                this.openModal(this.t(titleKeys[idx]), textureData);
             });
         });
     }
@@ -164,13 +257,11 @@ class FourWallShadowCutter {
                 requestAnimationFrame(() => {
                     this.isFirstLoad = true;
                     this.processImage();
-                    // 自动触发展示功能，免去用户首屏点“生成”的步骤
                     this.startCalculation(); 
                 });
             });
         };
         img.onerror = () => {
-            console.log("未检测到本地 default.png，自动加载内置基础测试图案。");
             img.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj4gPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IndoaXRlIi8+IDxwYXRoIGQ9Ik0xMDAsMTAgTDEyNSw3MCBMMTkwLDcwIEwxNDAsMTEwIEwxNjAsMTgwIEwxMDAsMTQwIEw0MCwxODAgTDYwLDExMCBMMTAsNzAgTDc1LDcwIFoiIGZpbGw9ImJsYWNrIi8+IDwvc3ZnPg==";
         };
         img.src = './default.png';
@@ -225,9 +316,9 @@ class FourWallShadowCutter {
             this.tBoxGroup.add(plane);
         }
 
-        const labelTexts = ['上', '左', '下', '右'];
+        const labels = [this.t('label_top'), this.t('label_left'), this.t('label_bot'), this.t('label_right')];
         for (let i = 0; i < 4; i++) {
-            const sprite = this.createTextSprite(labelTexts[i]);
+            const sprite = this.createTextSprite(labels[i]);
             this.tLabels.push(sprite);
             this.tBoxGroup.add(sprite);
         }
@@ -422,8 +513,8 @@ class FourWallShadowCutter {
         this.tRaysGroup.visible = true;
     }
 
-    showLoader(text, showProgress = false) {
-        document.getElementById('loader-text').textContent = text;
+    showLoader(textKey, showProgress = false) {
+        document.getElementById('loader-text').textContent = this.t(textKey);
         document.getElementById('global-loader').style.display = 'flex';
         document.querySelector('.progress-bar').style.display = showProgress ? 'block' : 'none';
         document.getElementById('progress-text').style.display = showProgress ? 'block' : 'none';
@@ -509,7 +600,7 @@ class FourWallShadowCutter {
         }
         
         this.shouldInvert = (edgeWhiteCount / edgeTotalCount) < 0.5;
-        document.getElementById('auto-invert-value').textContent = this.shouldInvert ? '已反转' : '默认';
+        document.getElementById('auto-invert-value').textContent = this.shouldInvert ? this.t('status_inverted') : this.t('status_default');
     }
     
     drawPreviewCanvas(id, imageSource) {
@@ -584,7 +675,7 @@ class FourWallShadowCutter {
     }
     
     async startCalculation() {
-        if (!this.binaryImageData) { alert('请先上传图片！'); return; }
+        if (!this.binaryImageData) { alert(this.t('alert_no_img')); return; }
         
         this.isCalculating = true;
         this.hasIslandWarning = false;
@@ -592,7 +683,7 @@ class FourWallShadowCutter {
         
         this.updateSteps(3);
         this.updateLoaderProgress(0);
-        this.showLoader('正在生成图纸...', true);
+        this.showLoader('loader_text', true);
         
         setTimeout(() => this.executeChunkedRaycasting(), 100);
     }
@@ -675,7 +766,6 @@ class FourWallShadowCutter {
                 await new Promise(res => setTimeout(res, 0));
             }
             
-            // 四壁的孤岛检测
             if (this.detectAndHighlightIslands(wallImg)) {
                 this.hasIslandWarning = true;
             }
@@ -683,7 +773,6 @@ class FourWallShadowCutter {
             this.wallTextures.push(wallImg);
         }
 
-        // 生成盒子底面的图纸 (无需孤岛检测，因为底板只是贴纸或垫板)
         if (this.isCalculating) {
             const wBasePx = Math.ceil(boxW * pxPerCm);
             const hBasePx = Math.ceil(boxH * pxPerCm);
@@ -697,10 +786,10 @@ class FourWallShadowCutter {
                     const imgPx = Math.round((x / shadowW + 0.5) * imgW);
                     const imgPy = Math.round((-y / shadowH + 0.5) * imgH); 
                     
-                    let color = 255; // 默认透光(白)
+                    let color = 255; 
                     if (imgPx >= 0 && imgPx < imgW && imgPy >= 0 && imgPy < imgH) {
                         const idx = (imgPy * imgW + imgPx) * 4;
-                        if (binData[idx] === 0) color = 220; // 阴影留纸板(灰)
+                        if (binData[idx] === 0) color = 220; 
                     }
                     
                     const dIdx = (r * wBasePx + c) * 4;
@@ -710,7 +799,6 @@ class FourWallShadowCutter {
                     baseImg.data[dIdx+3] = 255;
                 }
             }
-            // 移除了底面的悬空判定，因为底面不适用“抠除”逻辑。
             this.baseTexture = baseImg;
         }
         
@@ -759,8 +847,8 @@ class FourWallShadowCutter {
     }
     
     async generatePDF() {
-        if (this.wallTextures.length === 0 || !this.baseTexture) { alert('请先生成图纸！'); return; }
-        this.showLoader('正在拼装 A4 图纸...');
+        if (this.wallTextures.length === 0 || !this.baseTexture) { alert(this.t('alert_no_pdf')); return; }
+        this.showLoader('loader_pdf');
         
         try {
             const { jsPDF } = window.jspdf;
@@ -768,7 +856,6 @@ class FourWallShadowCutter {
             
             this.drawCoverCanvasForPDF(pdf);
             
-            // 加入底面图纸作为第 2 页
             pdf.addPage('a4', 'portrait');
             this.drawBaseCanvasForPDF(pdf);
             
@@ -778,9 +865,9 @@ class FourWallShadowCutter {
                 this.drawWallCanvasForPDF(pdf, i, orientMap[i]);
             }
             
-            pdf.save(`光影纸盒裁切图纸_${new Date().getTime()}.pdf`);
+            pdf.save(`ShadowBox_Templates_${new Date().getTime()}.pdf`);
         } catch (error) {
-            alert('PDF下载失败: ' + error.message);
+            alert('PDF Export Failed: ' + error.message);
         } finally {
             this.hideLoader();
         }
@@ -794,42 +881,41 @@ class FourWallShadowCutter {
         canvas.width = wPX; canvas.height = hPX;
         ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, wPX, hPX);
         ctx.fillStyle = '#4361ee'; ctx.font = `bold ${24 * dpi/72}px Arial`; 
-        ctx.fillText('光影纸盒裁切图纸', 25 * dpi/25.4, 40 * dpi/25.4);
+        ctx.fillText(this.t('pdf_title'), 25 * dpi/25.4, 40 * dpi/25.4);
         
         ctx.fillStyle = '#333'; ctx.font = `${14 * dpi/72}px Arial`;
         let y = 70 * dpi/25.4;
         const txt = (str, color='#333') => { ctx.fillStyle = color; ctx.fillText(str, 25 * dpi/25.4, y); y += 12 * dpi/25.4; };
         
-        txt(`纸盒长度(X): ${document.getElementById('box-width').value} cm`);
-        txt(`纸盒宽度(Y): ${document.getElementById('box-height').value} cm`);
-        txt(`纸盒深度(Z): ${document.getElementById('box-depth').value} cm`);
-        txt(`灯泡距底高度: ${document.getElementById('light-height').value} cm`);
+        txt(`X: ${document.getElementById('box-width').value} cm`);
+        txt(`Y: ${document.getElementById('box-height').value} cm`);
+        txt(`Z: ${document.getElementById('box-depth').value} cm`);
+        txt(`${this.t('lbl_light_h')}: ${document.getElementById('light-height').value} cm`);
         const lx = document.getElementById('light-x').value;
         const ly = document.getElementById('light-y').value;
-        txt(`灯泡平面位置: X偏移 ${lx} cm, Y偏移 ${ly} cm`);
+        txt(`X Offset: ${lx} cm, Y Offset: ${ly} cm`);
         
         y += 15 * dpi/25.4;
-        txt('【 剪裁说明 】', '#ef233c');
-        txt('1. 【灰色区域】：保留纸板，不要剪。');
-        txt('2. 【白色区域】：用刻刀全部掏空，让光透出去。');
+        txt(this.t('pdf_cut_inst'), '#ef233c');
+        txt(this.t('pdf_grey'));
+        txt(this.t('pdf_white'));
         if (this.hasIslandWarning) {
-            txt('3. 【红色区域】：提示！这是侧壁悬空的图案，全剪会掉下来。', '#ef233c');
-            txt('   剪的时候必须留一条纸连着，或者用透明胶带从背面固定！', '#ef233c');
+            txt(this.t('pdf_red_1'), '#ef233c');
+            txt(this.t('pdf_red_2'), '#ef233c');
         }
         
         y += 20 * dpi/25.4;
-        txt('⚠️ 打印属性提示：', '#4361ee');
-        txt('本PDF包含 6 页（封面 + 1张底面 + 4张侧墙）。', '#333');
-        txt('本图纸已严格按 1:1 比例生成。打印时请务必在打印机设置中', '#333');
-        txt('选择【实际大小】或【100% 缩放】。绝不要选择“适应纸张”！', '#333');
+        txt(this.t('pdf_print_warn'), '#4361ee');
+        txt(this.t('pdf_print_1'), '#333');
+        txt(this.t('pdf_print_2'), '#333');
+        txt(this.t('pdf_print_3'), '#333');
 
-        // ======== 添加 PDF 水印声明 ========
         y = hPX - 35 * dpi/25.4;
         ctx.fillStyle = '#888888';
         ctx.font = `italic ${10 * dpi/72}px Arial`;
         ctx.textAlign = 'center';
         ctx.fillText('Powered by SolidSteam\'s ShadowArt Tool', wPX/2, y);
-        ctx.fillText('如果这个工具帮到了您，欢迎回到网页端打赏支持作者！', wPX/2, y + 6 * dpi/25.4);
+        ctx.fillText(this.t('pdf_watermark'), wPX/2, y + 6 * dpi/25.4);
         ctx.fillText('GitHub: https://github.com/solidsteam/shadowArt', wPX/2, y + 12 * dpi/25.4);
         
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 210, 297);
@@ -839,7 +925,7 @@ class FourWallShadowCutter {
         const canvas = document.getElementById('pdf-base-canvas');
         const ctx = canvas.getContext('2d');
         const dpi = 150, scalePX = dpi / 25.4;
-        const widthMM = 210, heightMM = 297; // 竖向 A4
+        const widthMM = 210, heightMM = 297; 
         const wPX = widthMM * scalePX, hPX = heightMM * scalePX;
         
         canvas.width = wPX; canvas.height = hPX;
@@ -861,11 +947,10 @@ class FourWallShadowCutter {
         ctx.setLineDash([]);
         
         ctx.fillStyle = '#d90429'; ctx.font = `bold ${12 * dpi/72}px Arial`; ctx.textAlign = 'center';
-        ctx.fillText(`↑ 盒子底面图案 (可垫在盒子下方或贴于外部) ↑`, wPX/2, offsetY - 5 * scalePX);
+        ctx.fillText(this.t('pdf_base_desc'), wPX/2, offsetY - 5 * scalePX);
 
-        // ======== 添加 PDF 水印声明 ========
         ctx.fillStyle = '#999999'; ctx.font = `italic ${9 * dpi/72}px Arial`;
-        ctx.fillText('Powered by SolidSteam\'s ShadowArt Tool | 欢迎在网页端打赏支持作者', wPX/2, hPX - 10 * scalePX);
+        ctx.fillText(`Powered by SolidSteam's ShadowArt Tool | ${this.t('pdf_watermark')}`, wPX/2, hPX - 10 * scalePX);
         
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, widthMM, heightMM);
     }
@@ -899,12 +984,12 @@ class FourWallShadowCutter {
         ctx.setLineDash([]);
         
         ctx.fillStyle = '#d90429'; ctx.font = `bold ${12 * dpi/72}px Arial`; ctx.textAlign = 'center';
-        const names = ['上边墙', '左边墙', '下边墙', '右边墙'];
-        ctx.fillText(`↑ 这一边靠近盒子的顶部大开口/盖子处 (${names[wallIndex]}) ↑`, wPX/2, offsetY - 5 * scalePX);
+        const names = [this.t('thumb_top'), this.t('thumb_left'), this.t('thumb_bot'), this.t('thumb_right')];
+        let descStr = this.t('pdf_wall_desc').replace('{0}', names[wallIndex]);
+        ctx.fillText(descStr, wPX/2, offsetY - 5 * scalePX);
 
-        // ======== 添加 PDF 水印声明 ========
         ctx.fillStyle = '#999999'; ctx.font = `italic ${9 * dpi/72}px Arial`;
-        ctx.fillText('Powered by SolidSteam\'s ShadowArt Tool | 欢迎在网页端打赏支持作者', wPX/2, hPX - 10 * scalePX);
+        ctx.fillText(`Powered by SolidSteam's ShadowArt Tool | ${this.t('pdf_watermark')}`, wPX/2, hPX - 10 * scalePX);
         
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, widthMM, heightMM);
     }

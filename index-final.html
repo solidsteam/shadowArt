@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>光影纸盒图纸生成器</title>
+    <title>光影纸盒图纸生成器 | Shadow Box Generator</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -21,12 +21,15 @@
         .header-title h1 { color: var(--primary-color); font-size: 1.8rem;}
         .header-title p { color: #666; margin-top: 5px; font-size: 1rem;}
         
-        .header-donate { display: flex; align-items: center; gap: 10px; position: relative; flex-wrap: wrap;}
+        .header-actions { display: flex; align-items: center; gap: 15px; flex-wrap: wrap;}
+        .header-donate { display: flex; align-items: center; gap: 10px; position: relative; }
         .donate-text { font-size: 0.9rem; color: #666; margin-right: 5px; }
         .donate-btn { padding: 8px 16px; font-size: 0.95rem; border-radius: 20px; border: none; cursor: pointer; color: white; transition: 0.2s; display: flex; align-items: center; gap: 6px;}
         .donate-btn:hover { opacity: 0.9; transform: translateY(-1px); }
         .btn-wx { background: #07c160; }
         .btn-zfb { background: #1677ff; }
+        .btn-lang { background: #e2e8f0; color: #333; font-weight: bold; }
+        .btn-lang:hover { background: #cbd5e1; }
         .qr-popup { position: absolute; top: 120%; right: 0; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); display: none; z-index: 100;}
         .qr-popup img { width: 160px; height: 160px; object-fit: cover; border-radius: 4px; display: block;}
         
@@ -75,7 +78,6 @@
         .template-thumb canvas { width: 100%; height: 60px; background: white; border: 1px solid #eee; object-fit: contain; pointer-events: none;}
         
         #island-warning { display: none; background: #fff3cd; color: #856404; padding: 12px; border-left: 4px solid #ffeeba; border-radius: 6px; margin-top: 10px; font-size: 0.85rem; }
-        #island-warning ul { margin-top: 5px; padding-left: 20px; }
         
         .global-loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px);}
         .loader-content { text-align: center; max-width: 500px; width: 100%; }
@@ -87,7 +89,6 @@
         .right-column::-webkit-scrollbar { width: 6px; }
         .right-column::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 3px; }
 
-        /* 弹窗看图样式 */
         .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(3px); }
         .modal-content { margin: auto; display: block; max-width: 90%; max-height: 80vh; border-radius: 4px; margin-top: 5vh; box-shadow: 0 4px 24px rgba(0,0,0,0.5); background: white; }
         .close-btn { position: absolute; top: 20px; right: 35px; color: white; font-size: 40px; font-weight: bold; cursor: pointer; transition: 0.3s; }
@@ -99,7 +100,6 @@
             body { padding: 10px; }
             .main-content { display: flex; flex-direction: column-reverse; gap: 20px; }
             .right-column { position: static; max-height: none; overflow: visible; padding-right: 0;}
-            /* 使 3D 预览区在手机上下滑时吸顶，方便实时查看光影变化 */
             .right-column .card:first-child { position: sticky; top: 10px; z-index: 90; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 2px solid var(--primary-color);}
             
             .left-column { gap: 15px; }
@@ -108,7 +108,7 @@
             
             header { padding: 15px; margin-bottom: 15px; }
             .header-title h1 { font-size: 1.5rem; }
-            .header-donate { width: 100%; margin-top: 10px; justify-content: flex-start; }
+            .header-actions { width: 100%; margin-top: 10px; justify-content: flex-start; }
             
             #threejs-container { height: 320px; }
             .qr-popup { top: auto; bottom: 120%; }
@@ -119,6 +119,7 @@
             .template-thumbnails { grid-template-columns: repeat(2, 1fr); }
             .step { font-size: 0.8rem; }
             #threejs-container { height: 260px; }
+            .header-donate { flex-wrap: wrap; }
         }
     </style>
 </head>
@@ -143,22 +144,25 @@
             <img src="legend.png" alt="图解说明" class="legend-banner" onerror="this.style.display='none'">
             <div class="header-content">
                 <div class="header-title">
-                    <h1><i class="fas fa-cube"></i> 光影纸盒图纸生成器</h1>
-                    <p>上传图案并输入盒子尺寸，一键生成裁切图纸。</p>
+                    <h1><i class="fas fa-cube"></i> <span data-i18n="app_title">光影纸盒图纸生成器</span></h1>
+                    <p data-i18n="app_subtitle">上传图案并输入盒子尺寸，一键生成裁切图纸。</p>
                 </div>
-                <div class="header-donate">
-                    <span class="donate-text">觉得好用？请作者喝杯咖啡 ☕</span>
-                    <button class="donate-btn btn-wx" onclick="toggleDonate('wx')"><i class="fab fa-weixin"></i> 微信</button>
-                    <button class="donate-btn btn-zfb" onclick="toggleDonate('zfb')"><i class="fab fa-alipay"></i> 支付宝</button>
-                    <div class="qr-popup" id="qr-popup"><img id="qr-img" src="" alt="收款码"></div>
+                <div class="header-actions">
+                    <button class="donate-btn btn-lang" id="lang-toggle-btn"><i class="fas fa-language"></i> EN</button>
+                    <div class="header-donate">
+                        <span class="donate-text" data-i18n="donate_text">觉得好用？请作者喝杯咖啡 ☕</span>
+                        <button class="donate-btn btn-wx" onclick="toggleDonate('wx')"><i class="fab fa-weixin"></i> <span data-i18n="wechat">微信</span></button>
+                        <button class="donate-btn btn-zfb" onclick="toggleDonate('zfb')"><i class="fab fa-alipay"></i> <span data-i18n="alipay">支付宝</span></button>
+                        <div class="qr-popup" id="qr-popup"><img id="qr-img" src="" alt="收款码"></div>
+                    </div>
                 </div>
             </div>
         </header>
         
         <div class="step-indicator">
-            <div class="step active">1. 传图与设置</div>
-            <div class="step">2. 光影预览</div>
-            <div class="step">3. 下载打印</div>
+            <div class="step active" data-i18n="step_1">1. 传图与设置</div>
+            <div class="step" data-i18n="step_2">2. 光影预览</div>
+            <div class="step" data-i18n="step_3">3. 下载打印</div>
         </div>
         
         <div class="main-content">
@@ -167,18 +171,24 @@
                     <div class="upload-compact">
                         <div class="upload-area" id="upload-area">
                             <i class="fas fa-cloud-upload-alt"></i>
-                            <div>点击/拖放换图</div>
+                            <div data-i18n="upload_text">点击/拖放换图</div>
                             <input type="file" id="file-input" accept="image/*" style="display:none;">
                         </div>
                         <div class="preview-grid">
-                            <div class="preview-item"><h4>① 原图</h4><canvas id="preview-original" width="150" height="100"></canvas></div>
-                            <div class="preview-item"><h4>② 提取影子(黑块)</h4><canvas id="preview-binary" width="150" height="100"></canvas></div>
+                            <div class="preview-item">
+                                <h4><span data-i18n="preview_orig">① 原图</span></h4>
+                                <canvas id="preview-original" width="150" height="100"></canvas>
+                            </div>
+                            <div class="preview-item">
+                                <h4><span data-i18n="preview_bin">② 提取影子(黑块)</span></h4>
+                                <canvas id="preview-binary" width="150" height="100"></canvas>
+                            </div>
                         </div>
                     </div>
                     
                     <div class="control-grid">
                         <div class="control-item" style="grid-column: 1 / -1;">
-                            <label>图案细节过滤</label>
+                            <label><span data-i18n="lbl_threshold">图案细节过滤</span></label>
                             <div class="input-group">
                                 <input type="range" id="threshold" min="0" max="255" value="128">
                                 <input type="number" id="threshold-num" min="0" max="255" value="128">
@@ -186,21 +196,21 @@
                         </div>
                         
                         <div class="control-item">
-                            <label>纸盒长度 (X) cm</label>
+                            <label><span data-i18n="lbl_box_w">纸盒长度 (X) cm</span></label>
                             <div class="input-group">
                                 <input type="range" id="box-width" min="5" max="50" step="0.5" value="10">
                                 <input type="number" id="box-width-num" min="5" max="50" step="0.5" value="10">
                             </div>
                         </div>
                         <div class="control-item">
-                            <label>纸盒宽度 (Y) cm</label>
+                            <label><span data-i18n="lbl_box_h">纸盒宽度 (Y) cm</span></label>
                             <div class="input-group">
                                 <input type="range" id="box-height" min="5" max="50" step="0.5" value="10">
                                 <input type="number" id="box-height-num" min="5" max="50" step="0.5" value="10">
                             </div>
                         </div>
                         <div class="control-item">
-                            <label>纸盒深度 (Z) cm</label>
+                            <label><span data-i18n="lbl_box_d">纸盒深度 (Z) cm</span></label>
                             <div class="input-group">
                                 <input type="range" id="box-depth" min="5" max="40" step="0.5" value="10">
                                 <input type="number" id="box-depth-num" min="5" max="40" step="0.5" value="10">
@@ -208,21 +218,21 @@
                         </div>
                         
                         <div class="control-item">
-                            <label>灯泡离底高度 cm</label>
+                            <label><span data-i18n="lbl_light_h">灯泡离底高度 cm</span></label>
                             <div class="input-group">
                                 <input type="range" id="light-height" min="1" max="40" step="0.5" value="5">
                                 <input type="number" id="light-height-num" min="1" max="40" step="0.5" value="5">
                             </div>
                         </div>
                         <div class="control-item">
-                            <label>灯泡 X轴 偏移 cm</label>
+                            <label><span data-i18n="lbl_light_x">灯泡 X轴 偏移 cm</span></label>
                             <div class="input-group">
                                 <input type="range" id="light-x" min="-5" max="5" step="0.1" value="0">
                                 <input type="number" id="light-x-num" min="-5" max="5" step="0.1" value="0">
                             </div>
                         </div>
                         <div class="control-item">
-                            <label>灯泡 Y轴 偏移 cm</label>
+                            <label><span data-i18n="lbl_light_y">灯泡 Y轴 偏移 cm</span></label>
                             <div class="input-group">
                                 <input type="range" id="light-y" min="-5" max="5" step="0.1" value="0">
                                 <input type="number" id="light-y-num" min="-5" max="5" step="0.1" value="0">
@@ -230,7 +240,10 @@
                         </div>
 
                         <div class="control-item" style="grid-column: 1 / -1;">
-                            <label>投影墙面高度 cm <span style="font-weight:normal; color:#888;">(决定最终投射在墙上的图案大小)</span></label>
+                            <label>
+                                <span data-i18n="lbl_shadow_h">投影墙面高度 cm</span> 
+                                <span style="font-weight:normal; color:#888;" data-i18n="lbl_shadow_desc">(决定最终投射在墙上的图案大小)</span>
+                            </label>
                             <div class="input-group">
                                 <input type="range" id="shadow-height" min="10" max="280" step="5" value="50">
                                 <input type="number" id="shadow-height-num" min="10" max="280" step="5" value="50">
@@ -238,39 +251,47 @@
                         </div>
 
                         <div class="control-item" style="grid-column: 1 / -1; display:flex; flex-direction:row; gap:15px; background:#e0e7ff; padding:15px; border-radius:8px; align-items: center; justify-content: space-between;">
-                            <label style="font-size: 1rem; font-weight: bold; color: var(--primary-color);">光影设定 (<span id="auto-invert-value">自动</span>)</label>
-                            <button id="toggle-invert" class="btn" style="flex: 1; max-width: 250px; background:white; color: #333; border: 1px solid #ccc; padding: 10px;"><i class="fas fa-exchange-alt"></i> 反转黑白</button>
+                            <label style="font-size: 1rem; font-weight: bold; color: var(--primary-color);">
+                                <span data-i18n="lbl_invert">光影设定</span> (<span id="auto-invert-value" data-i18n="lbl_invert_auto">自动</span>)
+                            </label>
+                            <button id="toggle-invert" class="btn" style="flex: 1; max-width: 250px; background:white; color: #333; border: 1px solid #ccc; padding: 10px;">
+                                <i class="fas fa-exchange-alt"></i> <span data-i18n="btn_invert">反转黑白</span>
+                            </button>
                         </div>
                     </div>
                     
-                    <button class="btn btn-primary" id="process-btn" style="width: 100%; margin-top: 20px; font-size:1.1rem; padding: 16px;"><i class="fas fa-magic"></i> 生成预览与图纸</button>
+                    <button class="btn btn-primary" id="process-btn" style="width: 100%; margin-top: 20px; font-size:1.1rem; padding: 16px;">
+                        <i class="fas fa-magic"></i> <span data-i18n="btn_generate">生成预览与图纸</span>
+                    </button>
                 </div>
             </div>
             
             <div class="right-column">
                 <div class="card">
-                    <h2 style="font-size: 1.2rem; margin-bottom: 10px;"><i class="fas fa-eye"></i> 效果预览</h2>
-                    <p style="font-size:0.8rem; color:#666; margin-bottom:10px;">调节左侧数值，右侧即时响应。鼠标左键可旋转，滚轮可缩放。</p>
+                    <h2 style="font-size: 1.2rem; margin-bottom: 10px;"><i class="fas fa-eye"></i> <span data-i18n="title_preview">效果预览</span></h2>
+                    <p style="font-size:0.8rem; color:#666; margin-bottom:10px;" data-i18n="desc_preview">调节左侧数值，右侧即时响应。鼠标左键可旋转，滚轮可缩放。</p>
                     <div id="threejs-container"></div>
                 </div>
                 
                 <div class="card">
-                    <h2 style="font-size: 1.2rem; margin-bottom: 10px;"><i class="fas fa-print"></i> 打印图纸输出</h2>
+                    <h2 style="font-size: 1.2rem; margin-bottom: 10px;"><i class="fas fa-print"></i> <span data-i18n="title_print">打印图纸输出</span></h2>
                     
                     <div id="island-warning">
-                        <strong><i class="fas fa-exclamation-triangle"></i> 提示：侧壁图案中有悬空部分！</strong>
-                        <p style="margin-top: 3px;">图纸上红色的部分在剪裁时会完全掉落。建议反转黑白，或在剪纸时手工留点纸条连着。</p>
+                        <strong><i class="fas fa-exclamation-triangle"></i> <span data-i18n="warn_title">提示：侧壁图案中有悬空部分！</span></strong>
+                        <p style="margin-top: 3px;" data-i18n="warn_desc">图纸上红色的部分在剪裁时会完全掉落。建议反转黑白，或在剪纸时手工留点纸条连着。</p>
                     </div>
 
                     <div class="template-thumbnails">
-                        <div class="template-thumb" id="thumb-btn-base" title="点击放大查看"><h4>盒子底面</h4><canvas id="thumb-base"></canvas></div>
-                        <div class="template-thumb" id="thumb-btn-top" title="点击放大查看"><h4>上边墙</h4><canvas id="thumb-top"></canvas></div>
-                        <div class="template-thumb" id="thumb-btn-left" title="点击放大查看"><h4>左边墙</h4><canvas id="thumb-left"></canvas></div>
-                        <div class="template-thumb" id="thumb-btn-bottom" title="点击放大查看"><h4>下边墙</h4><canvas id="thumb-bottom"></canvas></div>
-                        <div class="template-thumb" id="thumb-btn-right" title="点击放大查看"><h4>右边墙</h4><canvas id="thumb-right"></canvas></div>
+                        <div class="template-thumb" id="thumb-btn-base" title="点击放大查看"><h4 data-i18n="thumb_base">盒子底面</h4><canvas id="thumb-base"></canvas></div>
+                        <div class="template-thumb" id="thumb-btn-top" title="点击放大查看"><h4 data-i18n="thumb_top">上边墙</h4><canvas id="thumb-top"></canvas></div>
+                        <div class="template-thumb" id="thumb-btn-left" title="点击放大查看"><h4 data-i18n="thumb_left">左边墙</h4><canvas id="thumb-left"></canvas></div>
+                        <div class="template-thumb" id="thumb-btn-bottom" title="点击放大查看"><h4 data-i18n="thumb_bot">下边墙</h4><canvas id="thumb-bottom"></canvas></div>
+                        <div class="template-thumb" id="thumb-btn-right" title="点击放大查看"><h4 data-i18n="thumb_right">右边墙</h4><canvas id="thumb-right"></canvas></div>
                     </div>
 
-                    <button class="btn btn-success" id="download-pdf-btn" style="width: 100%; margin-top: 15px;"><i class="fas fa-file-pdf"></i> 下载 PDF 打印图纸</button>
+                    <button class="btn btn-success" id="download-pdf-btn" style="width: 100%; margin-top: 15px;">
+                        <i class="fas fa-file-pdf"></i> <span data-i18n="btn_pdf">下载 PDF 打印图纸</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -287,22 +308,43 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="app-final.js"></script>
-    <script>
+<script>
+        // 1. 图片预加载：在网页刚打开时就在后台悄悄加载好二维码，做到点击秒出
+        const preloadedImages = {
+            wx: new Image(),
+            zfb: new Image()
+        };
+        preloadedImages.wx.src = './qr_wx.png';
+        preloadedImages.zfb.src = './qr_zfb.png';
+
+        // 记录当前弹窗显示的是哪个二维码
+        let currentQrType = '';
+
         function toggleDonate(type) {
             const popup = document.getElementById('qr-popup');
             const img = document.getElementById('qr-img');
-            if (popup.style.display === 'block' && img.src.includes(type)) {
+            
+            if (popup.style.display === 'block' && currentQrType === type) {
+                // 如果弹窗开着，且点的还是当前这个按钮，就关闭弹窗
                 popup.style.display = 'none';
+                currentQrType = '';
             } else {
+                // 否则，切换图片来源并显示弹窗
                 img.src = type === 'wx' ? './qr_wx.png' : './qr_zfb.png';
+                currentQrType = type;
                 popup.style.display = 'block';
             }
         }
+
+        // 点击页面空白处自动隐藏打赏码
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.header-donate')) document.getElementById('qr-popup').style.display = 'none';
+            if (!e.target.closest('.header-donate')) {
+                document.getElementById('qr-popup').style.display = 'none';
+                currentQrType = ''; // 重置状态
+            }
         });
 
-        // 弹窗关闭逻辑
+        // 大图预览弹窗关闭逻辑
         const modal = document.getElementById('image-modal');
         const closeBtn = document.querySelector('.close-btn');
         closeBtn.onclick = () => modal.style.display = "none";
