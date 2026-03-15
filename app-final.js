@@ -1,10 +1,12 @@
-/* 四壁光影模板生成器 - 高阶数值与精准控制版 */
+/* 四壁光影模板生成器 - 完整闭环与大图预览版 */
 
 class FourWallShadowCutter {
     constructor() {
         this.originalImage = null;
         this.binaryImageData = null;
+        
         this.wallTextures = []; // 0:上, 1:左, 2:下, 3:右
+        this.baseTexture = null; // 新增：盒子覆盖在底面上的图案
         
         this.isFirstLoad = true;
         this.shouldInvert = false;
@@ -12,14 +14,13 @@ class FourWallShadowCutter {
         this.lidRecommendation = "等待图片...";
         this.hasIslandWarning = false;
         
-        // 3D 预览相关
         this.tScene = null; this.tCamera = null; this.tRenderer = null;
         this.tBoxGroup = null; this.tLightSphere = null; this.tPlanes = [];
         this.tShadowBox = null; this.tActualShadow = null; this.tRaysGroup = null;
         this.tLabels = []; 
         
         this.initUI();
-        this.loadDefaultImage(); // 尝试加载默认图片
+        this.loadDefaultImage(); 
     }
     
     initUI() {
@@ -37,7 +38,6 @@ class FourWallShadowCutter {
             if (e.target.files.length > 0) this.loadImage(e.target.files[0]);
         });
         
-        // 核心双向数据绑定 (滑块 <-> 数字输入框)
         const bindDoubleInput = (id, type) => {
             const slider = document.getElementById(id);
             const numInput = document.getElementById(`${id}-num`);
@@ -49,8 +49,8 @@ class FourWallShadowCutter {
                 if (type === 'image' && this.originalImage) {
                     this.processImage();
                 } else if (type === 'physics') {
-                    if (id === 'box-width' || id === 'box-height') {
-                        this.updateLightLimits(); // 盒子改变时，重置光源平移极限
+                    if (['box-width', 'box-height', 'box-depth'].includes(id)) {
+                        this.updateLightLimits();
                     }
                     this.updateThreeJSBox(); 
                 }
@@ -62,12 +62,10 @@ class FourWallShadowCutter {
                 const min = parseFloat(slider.min);
                 const max = parseFloat(slider.max);
                 if (isNaN(val)) return;
-                // 防止越界
                 if (val < min) val = min;
                 if (val > max) val = max;
                 updateAction(val);
             });
-            // 失去焦点时强制规整数值
             numInput.addEventListener('blur', (e) => updateAction(slider.value)); 
         };
         
@@ -92,45 +90,91 @@ class FourWallShadowCutter {
         document.getElementById('process-btn').addEventListener('click', () => this.startCalculation());
         document.getElementById('download-pdf-btn').addEventListener('click', () => this.generatePDF());
         
-        this.updateLightLimits(); // 初始化限位
+        // 绑定点击查看大图
+        this.bindThumbnailClicks();
+
+        this.updateLightLimits(); 
         this.updateSteps(1);
         this.initThreeJS();
     }
 
-    // 动态限制光源 X/Y 偏移量，防止拖出纸盒底部
+    bindThumbnailClicks() {
+        const thumbBtnIds = ['thumb-btn-base', 'thumb-btn-top', 'thumb-btn-left', 'thumb-btn-bottom', 'thumb-btn-right'];
+        const titles = ['盒子底面裁切图', '上边墙裁切图', '左边墙裁切图', '下边墙裁切图', '右边墙裁切图'];
+        
+        thumbBtnIds.forEach((btnId, idx) => {
+            const btn = document.getElementById(btnId);
+            btn.addEventListener('click', () => {
+                let textureData = idx === 0 ? this.baseTexture : this.wallTextures[idx - 1];
+                if (!textureData) return;
+                this.openModal(titles[idx], textureData);
+            });
+        });
+    }
+
+    openModal(title, imageData) {
+        const modal = document.getElementById('image-modal');
+        const modalImg = document.getElementById('modal-img');
+        const caption = document.getElementById('modal-caption');
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = imageData.width;
+        canvas.height = imageData.height;
+        const ctx = canvas.getContext('2d');
+        ctx.putImageData(imageData, 0, 0);
+        
+        // 画一圈红色的边界线，方便用户在纯白背景下看清纸板的边缘
+        ctx.strokeStyle = '#ef233c';
+        ctx.lineWidth = Math.max(1, Math.ceil(imageData.width / 200));
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
+        
+        modalImg.src = canvas.toDataURL('image/png');
+        caption.textContent = title;
+        modal.style.display = "block";
+    }
+
     updateLightLimits() {
         const boxW = parseFloat(document.getElementById('box-width').value);
         const boxH = parseFloat(document.getElementById('box-height').value);
+        const boxD = parseFloat(document.getElementById('box-depth').value);
         
-        const setLimits = (id, maxVal) => {
-            const limit = Math.max(0, maxVal / 2 - 0.5); // 留0.5cm安全边距
+        const setLimits = (id, minVal, maxVal) => {
             const slider = document.getElementById(id);
             const num = document.getElementById(`${id}-num`);
-            slider.min = -limit; slider.max = limit;
-            num.min = -limit; num.max = limit;
-            // 如果当前值越界，强制拉回
+            slider.min = minVal; slider.max = maxVal;
+            num.min = minVal; num.max = maxVal;
+            
             let current = parseFloat(slider.value);
-            if (current > limit) { slider.value = limit; num.value = limit; }
-            if (current < -limit) { slider.value = -limit; num.value = -limit; }
+            if (current > maxVal) { slider.value = maxVal; num.value = maxVal; }
+            if (current < minVal) { slider.value = minVal; num.value = minVal; }
         };
         
-        setLimits('light-x', boxW);
-        setLimits('light-y', boxH);
+        const limitX = Math.max(0, boxW / 2 - 0.5);
+        const limitY = Math.max(0, boxH / 2 - 0.5);
+        const limitZ = Math.max(1, boxD - 0.5); 
+        
+        setLimits('light-x', -limitX, limitX);
+        setLimits('light-y', -limitY, limitY);
+        setLimits('light-height', 1, limitZ);
     }
 
-    // 提供默认兜底图片，防止空跑
     loadDefaultImage() {
         const img = new Image();
+        img.crossOrigin = "Anonymous";
         img.onload = () => {
             this.originalImage = img;
-            this.processImage();
+            requestAnimationFrame(() => {
+                this.drawPreviewCanvas('preview-original', this.originalImage);
+                requestAnimationFrame(() => {
+                    this.isFirstLoad = true;
+                    this.processImage();
+                });
+            });
         };
         img.onerror = () => {
-            // 如果目录下没有 default.png，使用一个极简的笑脸 Base64 兜底
-            console.log("未找到 default.png，使用内置测试图");
-            img.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAAAXNSR0IArs4c6QAABFpJREFUeF7t3D1u1FAQgNHzyEXCDVAjcgB0kAAdoEIK+1EjpEEDVABa2I6280P2jGdmdqyXN/P1M7bfS5o1Xm+P1795N0t+Z+DjS0rA4Qn4LwEMAMMIEMAAAwgwgAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwMBzBPi7LMvzMcZPLyF5McZ4sCzLi2ma3k1R1Z8J8G9ZlndjjO+mqBjj+5T+dYzx/TRNv05Z1f8A/k4d/y+B42ma3kz71zMAA8AwAgQwwAACDDDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAu8M8G1Zlk9T1B1jfJ+m6c0UVV1+5Tsz/J1PjDEu53b/Bf4cAn6yvjXQ1fP6Fq78H4EBYBgBAhhggAEGGGBgJQFuh10fR91tV5xLgD/Lsjxbgv4r76n8eJrm+6FfA9z+i7qKqTeb2qZ5/g9t06xH3B1jfDkE/GT/HwI8H2N8eITV/l3y7TRNr4es7u2Qp+M3x/R/j7c/A8AwwAACDDDAAAMMMIAAAwwwgAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMBAS4Avy7K8G2P81HLBoz37Ypqmd0deb9u5fQJ2T7D2BfN27H0L3K8J4PaH8a1BbjfQ/kP42pW3L7o1yNtj9B1zXwP0LVD7XwADwDQCBDDAAAMMMIAAAwwwgAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAP/G+B33B/4/u8EjsN/G8BxxP0LHB//+5z6l23Vfw3gOADDAAAMMMIAAAwwwgAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwwAADDCDAAAMIMMAAAgwwMD/CPhfQ3+WZXkxxngwxvieyB5P0/TmlFVdfgR8WZbno3xnjPEtlX2cpunNKas6/yXwcoyxfb4vpmm6/Vft9OcfAAaAYQQIYIABBhhggAEGGGBgFQFuh53i5y+/84w/kZ7vvwRuiXy2RP6V91R+PE3z/dCvwS2R+xPqIabedGmb5jkE/GT/HwJ8H2N8eITV/l3y/TRNrwes7u2A1bE9/R1vvweAYQABBhiggAEGGGEAAQYYQIABBhhggAEGGGEAAQYYQIABBhhggAEGGGEAAQYYQIABBhhggAEGGGEAAQYYQIABBhhggAEGGGEAAQYYQIABBhhggAEGGGEAAQYYQIABBhhggAEGGGEAAQYYQIABBhhggIGnCPD2BfV2n1v/r+BfTNM0+7vJ/09HwLct57Xz+hZs/SWA25+AawHbbmB7iK4b2Bbk7Rh9y+tbgNoBBt4Y4A/h2vM12Q32+gAAAABJRU5ErkJggg==";
+            console.log("未检测到本地 default.png，自动加载内置基础测试图案。");
+            img.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj4gPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IndoaXRlIi8+IDxwYXRoIGQ9Ik0xMDAsMTAgTDEyNSw3MCBMMTkwLDcwIEwxNDAsMTEwIEwxNjAsMTgwIEwxMDAsMTQwIEw0MCwxODAgTDYwLDExMCBMMTAsNzAgTDc1LDcwIFoiIGZpbGw9ImJsYWNrIi8+IDwvc3ZnPg==";
         };
-        // 为了跨平台兼容，如果在服务器环境下可正常加载 './default.png'
         img.src = './default.png';
     }
 
@@ -141,7 +185,6 @@ class FourWallShadowCutter {
         ctx.font = "bold 50px 'Noto Sans SC', sans-serif";
         ctx.fillStyle = "#fff";
         
-        // 画一个蓝色圆角背景
         ctx.beginPath(); ctx.roundRect(10, 30, 108, 68, 15); ctx.fillStyle="#4361ee"; ctx.fill();
         
         ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -236,11 +279,9 @@ class FourWallShadowCutter {
         const boxD = parseFloat(document.getElementById('box-depth').value);
         const lightH = parseFloat(document.getElementById('light-height').value);
         
-        // 获取光源平移偏移量
         const lightX = parseFloat(document.getElementById('light-x').value);
         const lightY = parseFloat(document.getElementById('light-y').value);
         
-        // 获取投影墙高度，反推宽度
         const shadowH = parseFloat(document.getElementById('shadow-height').value);
         let aspect = 1;
         if (this.binaryImageData) {
@@ -266,14 +307,11 @@ class FourWallShadowCutter {
         this.tPlanes[3].position.set(boxW / 2, boxD / 2, 0);
         this.tPlanes[3].rotation.set(0, -Math.PI / 2, 0);
 
-        // 文字标签向外偏移
         this.tLabels[0].position.set(0, boxD / 2, -boxH / 2 - 2.5);
         this.tLabels[1].position.set(-boxW / 2 - 2.5, boxD / 2, 0);
         this.tLabels[2].position.set(0, boxD / 2, boxH / 2 + 2.5);
         this.tLabels[3].position.set(boxW / 2 + 2.5, boxD / 2, 0);
 
-        // 应用光源三维位置 (ThreeJS Y轴向上，Z轴向外)
-        // 物理系 X -> Three X; 物理系 Y -> Three -Z
         this.tLightSphere.position.set(lightX, lightH, -lightY);
         
         this.tShadowBox.scale.set(shadowW, shadowH, 1);
@@ -282,7 +320,6 @@ class FourWallShadowCutter {
         if (this.tActualShadow) this.tActualShadow.visible = false;
         if (this.tRaysGroup) this.tRaysGroup.visible = false;
         
-        // 动态重置贴图为半透明基础态，表示待计算
         for(let i=0; i<4; i++) {
             this.tPlanes[i].material.map = null;
             this.tPlanes[i].material.color.setHex(0x4361ee);
@@ -303,9 +340,9 @@ class FourWallShadowCutter {
             const modifiedData = new ImageData(new Uint8ClampedArray(srcData.data), srcData.width, srcData.height);
             for(let j=0; j<modifiedData.data.length; j+=4) {
                 if (modifiedData.data[j] === 255 && modifiedData.data[j+1] === 255 && modifiedData.data[j+2] === 255) {
-                    modifiedData.data[j+3] = 0; // 纯白抠空
+                    modifiedData.data[j+3] = 0; 
                 } else {
-                    modifiedData.data[j+3] = 220; // 实心
+                    modifiedData.data[j+3] = 220; 
                 }
             }
             ctx.putImageData(modifiedData, 0, 0);
@@ -587,7 +624,7 @@ class FourWallShadowCutter {
         
         this.updateSteps(3);
         this.updateLoaderProgress(0);
-        this.showLoader('正在精确计算光路...', true);
+        this.showLoader('正在生成图纸...', true);
         
         setTimeout(() => this.executeChunkedRaycasting(), 100);
     }
@@ -597,12 +634,10 @@ class FourWallShadowCutter {
         const boxH = parseFloat(document.getElementById('box-height').value);
         const boxD = parseFloat(document.getElementById('box-depth').value);
         
-        // 加入光线平移量参与计算
         const lightH = parseFloat(document.getElementById('light-height').value);
         const lightX = parseFloat(document.getElementById('light-x').value);
         const lightY = parseFloat(document.getElementById('light-y').value);
         
-        // 高度主导模式，推算宽度
         const shadowH = parseFloat(document.getElementById('shadow-height').value);
         const imgW = this.binaryImageData.width;
         const imgH = this.binaryImageData.height;
@@ -643,9 +678,8 @@ class FourWallShadowCutter {
                         const dz = p3d.z - lightH;
                         
                         if (dz >= 0) {
-                            isSolid = true; // 墙比光源高的地方必须是实体挡光，否则反向上射
+                            isSolid = true; 
                         } else {
-                            // 射线方向包含光源的平移补偿
                             const t = -lightH / dz; 
                             const groundX = lightX + t * (p3d.x - lightX);
                             const groundY = lightY + t * (p3d.y - lightY);
@@ -679,6 +713,40 @@ class FourWallShadowCutter {
             
             this.wallTextures.push(wallImg);
         }
+
+        // ================= 新增：生成盒子底面的图纸 =================
+        if (this.isCalculating) {
+            const wBasePx = Math.ceil(boxW * pxPerCm);
+            const hBasePx = Math.ceil(boxH * pxPerCm);
+            const baseImg = new ImageData(wBasePx, hBasePx);
+            
+            for(let r = 0; r < hBasePx; r++) {
+                for(let c = 0; c < wBasePx; c++) {
+                    const x = c / pxPerCm - boxW / 2;
+                    const y = boxH / 2 - r / pxPerCm;
+                    
+                    const imgPx = Math.round((x / shadowW + 0.5) * imgW);
+                    const imgPy = Math.round((-y / shadowH + 0.5) * imgH); 
+                    
+                    let color = 255; // 默认透光(白)
+                    if (imgPx >= 0 && imgPx < imgW && imgPy >= 0 && imgPy < imgH) {
+                        const idx = (imgPy * imgW + imgPx) * 4;
+                        if (binData[idx] === 0) color = 220; // 阴影留纸板(灰)
+                    }
+                    
+                    const dIdx = (r * wBasePx + c) * 4;
+                    baseImg.data[dIdx] = color;
+                    baseImg.data[dIdx+1] = color;
+                    baseImg.data[dIdx+2] = color;
+                    baseImg.data[dIdx+3] = 255;
+                }
+            }
+            // 对底面也进行一次孤岛检查
+            if (this.detectAndHighlightIslands(baseImg)) {
+                this.hasIslandWarning = true;
+            }
+            this.baseTexture = baseImg;
+        }
         
         if (this.isCalculating) {
             this.isCalculating = false;
@@ -695,19 +763,11 @@ class FourWallShadowCutter {
     }
     
     drawWallThumbnails() {
-        const drawThumb = (id, wallIndex) => {
+        const drawThumb = (id, idx) => {
             const canvas = document.getElementById(id);
             const ctx = canvas.getContext('2d');
             
-            if (wallIndex === -1) {
-                ctx.clearRect(0,0,canvas.width,canvas.height);
-                ctx.fillStyle = '#f8f9fa'; ctx.fillRect(0,0,canvas.width,canvas.height);
-                ctx.fillStyle = '#4361ee'; ctx.font = '12px Arial'; ctx.textAlign='center';
-                ctx.fillText('配置清单', canvas.width/2, 45);
-                return;
-            }
-            
-            const wallData = this.wallTextures[wallIndex];
+            let wallData = idx === 0 ? this.baseTexture : this.wallTextures[idx - 1];
             if (!wallData) return;
             
             canvas.width = wallData.width;
@@ -720,20 +780,20 @@ class FourWallShadowCutter {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(tempC, 0, 0);
             
-            ctx.strokeStyle = ['#ff4444', '#44ff44', '#4444ff', '#ffaa00'][wallIndex];
+            ctx.strokeStyle = ['#2b2d42', '#ff4444', '#44ff44', '#4444ff', '#ffaa00'][idx];
             ctx.lineWidth = 4;
             ctx.strokeRect(0, 0, canvas.width, canvas.height);
         };
         
-        drawThumb('thumb-cover', -1);
-        drawThumb('thumb-top', 0);
-        drawThumb('thumb-left', 1);
-        drawThumb('thumb-bottom', 2);
-        drawThumb('thumb-right', 3);
+        drawThumb('thumb-base', 0);
+        drawThumb('thumb-top', 1);
+        drawThumb('thumb-left', 2);
+        drawThumb('thumb-bottom', 3);
+        drawThumb('thumb-right', 4);
     }
     
     async generatePDF() {
-        if (this.wallTextures.length === 0) { alert('请先渲染图纸！'); return; }
+        if (this.wallTextures.length === 0 || !this.baseTexture) { alert('请先生成图纸！'); return; }
         this.showLoader('正在拼装 A4 图纸...');
         
         try {
@@ -741,6 +801,11 @@ class FourWallShadowCutter {
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             
             this.drawCoverCanvasForPDF(pdf);
+            
+            // 加入底面图纸作为第 2 页
+            pdf.addPage('a4', 'portrait');
+            this.drawBaseCanvasForPDF(pdf);
+            
             const orientMap = ['landscape', 'portrait', 'landscape', 'portrait'];
             for (let i = 0; i < 4; i++) {
                 pdf.addPage('a4', orientMap[i]);
@@ -783,16 +848,48 @@ class FourWallShadowCutter {
         txt('1. 【灰色区域】：保留纸板，不要剪。');
         txt('2. 【白色区域】：用刻刀全部掏空，让光透出去。');
         if (this.hasIslandWarning) {
-            txt('3. 【红色区域】：警告！这是悬空的图案，全剪会掉下来。', '#ef233c');
+            txt('3. 【红色区域】：提示！这是悬空的图案，全剪会掉下来。', '#ef233c');
             txt('   剪的时候必须留一条纸连着，或者用透明胶带从背面固定！', '#ef233c');
         }
         
         y += 20 * dpi/25.4;
         txt('⚠️ 打印属性提示：', '#4361ee');
-        txt('本PDF已严格按 1:1 比例生成。打印时请务必在打印机设置中', '#333');
+        txt('本PDF包含 6 页（封面 + 1张底面 + 4张侧墙）。', '#333');
+        txt('本图纸已严格按 1:1 比例生成。打印时请务必在打印机设置中', '#333');
         txt('选择【实际大小】或【100% 缩放】。绝不要选择“适应纸张”！', '#333');
         
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 210, 297);
+    }
+
+    drawBaseCanvasForPDF(pdf) {
+        const canvas = document.getElementById('pdf-base-canvas');
+        const ctx = canvas.getContext('2d');
+        const dpi = 150, scalePX = dpi / 25.4;
+        const widthMM = 210, heightMM = 297; // 竖向 A4
+        const wPX = widthMM * scalePX, hPX = heightMM * scalePX;
+        
+        canvas.width = wPX; canvas.height = hPX;
+        ctx.fillStyle = 'white'; ctx.fillRect(0, 0, wPX, hPX);
+        
+        const tempC = document.createElement('canvas');
+        tempC.width = this.baseTexture.width; tempC.height = this.baseTexture.height;
+        tempC.getContext('2d').putImageData(this.baseTexture, 0, 0);
+        
+        const physW = tempC.width / 30 * 10;
+        const physH = tempC.height / 30 * 10;
+        const offsetX = (wPX - physW * scalePX) / 2;
+        const offsetY = (hPX - physH * scalePX) / 2;
+        
+        ctx.drawImage(tempC, offsetX, offsetY, physW * scalePX, physH * scalePX);
+        
+        ctx.strokeStyle = '#2b2d42'; ctx.lineWidth = 1 * scalePX; ctx.setLineDash([5*scalePX, 5*scalePX]);
+        ctx.strokeRect(offsetX, offsetY, physW * scalePX, physH * scalePX);
+        ctx.setLineDash([]);
+        
+        ctx.fillStyle = '#d90429'; ctx.font = `bold ${12 * dpi/72}px Arial`; ctx.textAlign = 'center';
+        ctx.fillText(`↑ 盒子底面图案 (可垫在盒子下方或贴于外部) ↑`, wPX/2, offsetY - 5 * scalePX);
+        
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, widthMM, heightMM);
     }
     
     drawWallCanvasForPDF(pdf, wallIndex, orientation) {

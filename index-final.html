@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>四壁光影模板生成器</title>
+    <title>光影纸盒图纸生成器</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -30,14 +30,12 @@
         .qr-popup { position: absolute; top: 120%; right: 0; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); display: none; z-index: 100;}
         .qr-popup img { width: 160px; height: 160px; object-fit: cover; border-radius: 4px; display: block;}
         
-        /* 核心布局优化：左右分栏与右侧吸顶 */
         .main-content { display: grid; grid-template-columns: 1fr 1.2fr; gap: 30px; align-items: start; }
         .left-column { display: flex; flex-direction: column; gap: 20px; }
         .right-column { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 20px; max-height: calc(100vh - 40px); overflow-y: auto; padding-right: 5px;}
         
         .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         
-        /* 极致压缩上传区高度 */
         .upload-compact { display: flex; gap: 15px; align-items: center; }
         .upload-area { flex: 1; border: 2px dashed #ddd; border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; transition: 0.3s; background: #fafafa;}
         .upload-area:hover { border-color: var(--primary-color); background: rgba(67, 97, 238, 0.05); }
@@ -49,7 +47,6 @@
         .preview-item h4 { margin-bottom: 5px; color: #555; font-size: 0.8rem; }
         .preview-item canvas { width: 100%; height: 70px; object-fit: contain; border-radius: 4px; background: white; }
         
-        /* 精准数值输入的控制网格 */
         .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;}
         .control-item { display: flex; flex-direction: column; gap: 5px; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #eee;}
         .control-item label { font-size: 0.9rem; color: #444; font-weight: 500; display: flex; justify-content: space-between; align-items: center;}
@@ -72,9 +69,10 @@
         .step.active { color: var(--primary-color); font-weight: bold; }
         
         .template-thumbnails { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 15px; }
-        .template-thumb { border: 1px solid #dee2e6; border-radius: 6px; padding: 6px; background: #f8f9fa; text-align: center; }
+        .template-thumb { border: 1px solid #dee2e6; border-radius: 6px; padding: 6px; background: #f8f9fa; text-align: center; cursor: pointer; transition: 0.2s;}
+        .template-thumb:hover { border-color: var(--primary-color); background: #e0e7ff;}
         .template-thumb h4 { margin-bottom: 5px; font-size: 0.75rem; color: #555;}
-        .template-thumb canvas { width: 100%; height: 60px; background: white; border: 1px solid #eee; object-fit: contain;}
+        .template-thumb canvas { width: 100%; height: 60px; background: white; border: 1px solid #eee; object-fit: contain; pointer-events: none;}
         
         #island-warning { display: none; background: #fff3cd; color: #856404; padding: 12px; border-left: 4px solid #ffeeba; border-radius: 6px; margin-top: 10px; font-size: 0.85rem; }
         #island-warning ul { margin-top: 5px; padding-left: 20px; }
@@ -86,12 +84,24 @@
         .progress-fill { height: 100%; background: var(--primary-color); width: 0%; transition: width 0.1s linear; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* 针对右侧滚动条的微调 */
         .right-column::-webkit-scrollbar { width: 6px; }
         .right-column::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 3px; }
+
+        /* 弹窗看图样式 */
+        .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(3px); }
+        .modal-content { margin: auto; display: block; max-width: 90%; max-height: 80vh; border-radius: 4px; margin-top: 5vh; box-shadow: 0 4px 24px rgba(0,0,0,0.5); background: white; }
+        .close-btn { position: absolute; top: 20px; right: 35px; color: white; font-size: 40px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .close-btn:hover { color: var(--primary-color); }
+        #modal-caption { margin: auto; display: block; width: 80%; text-align: center; color: white; padding: 15px 0; font-size: 1.2rem; }
     </style>
 </head>
 <body>
+    <div id="image-modal" class="modal">
+        <span class="close-btn">&times;</span>
+        <img class="modal-content" id="modal-img">
+        <div id="modal-caption"></div>
+    </div>
+
     <div class="global-loader" id="global-loader">
         <div class="loader-content">
             <div class="spinner"></div>
@@ -106,8 +116,8 @@
             <img src="legend.png" alt="图解说明" class="legend-banner" onerror="this.style.display='none'">
             <div class="header-content">
                 <div class="header-title">
-                    <h1><i class="fas fa-cube"></i> 四壁光影模板生成器</h1>
-                    <p>上传图案并输入真实的物理尺寸，一键生成防呆裁切图纸。</p>
+                    <h1><i class="fas fa-cube"></i> 光影纸盒图纸生成器</h1>
+                    <p>上传图案并输入盒子尺寸，一键生成裁切图纸。</p>
                 </div>
                 <div class="header-donate">
                     <span class="donate-text">觉得好用？请作者喝杯咖啡 ☕</span>
@@ -121,7 +131,7 @@
         <div class="step-indicator">
             <div class="step active">1. 传图与设置</div>
             <div class="step">2. 光影预览</div>
-            <div class="step">3. 下载图纸</div>
+            <div class="step">3. 下载打印</div>
         </div>
         
         <div class="main-content">
@@ -135,13 +145,13 @@
                         </div>
                         <div class="preview-grid">
                             <div class="preview-item"><h4>① 原图</h4><canvas id="preview-original" width="150" height="100"></canvas></div>
-                            <div class="preview-item"><h4>② 最终图案(黑为影)</h4><canvas id="preview-binary" width="150" height="100"></canvas></div>
+                            <div class="preview-item"><h4>② 提取影子(黑块)</h4><canvas id="preview-binary" width="150" height="100"></canvas></div>
                         </div>
                     </div>
                     
                     <div class="control-grid">
                         <div class="control-item" style="grid-column: 1 / -1;">
-                            <label>图案细节过滤 (阈值)</label>
+                            <label>图案细节过滤</label>
                             <div class="input-group">
                                 <input type="range" id="threshold" min="0" max="255" value="128">
                                 <input type="number" id="threshold-num" min="0" max="255" value="128">
@@ -169,6 +179,7 @@
                                 <input type="number" id="box-depth-num" min="5" max="40" step="0.5" value="10">
                             </div>
                         </div>
+                        
                         <div class="control-item">
                             <label>灯泡离底高度 cm</label>
                             <div class="input-group">
@@ -176,16 +187,15 @@
                                 <input type="number" id="light-height-num" min="1" max="40" step="0.5" value="5">
                             </div>
                         </div>
-
                         <div class="control-item">
-                            <label>灯泡 X轴 平移 cm</label>
+                            <label>灯泡 X轴 偏移 cm</label>
                             <div class="input-group">
                                 <input type="range" id="light-x" min="-5" max="5" step="0.1" value="0">
                                 <input type="number" id="light-x-num" min="-5" max="5" step="0.1" value="0">
                             </div>
                         </div>
                         <div class="control-item">
-                            <label>灯泡 Y轴 平移 cm</label>
+                            <label>灯泡 Y轴 偏移 cm</label>
                             <div class="input-group">
                                 <input type="range" id="light-y" min="-5" max="5" step="0.1" value="0">
                                 <input type="number" id="light-y-num" min="-5" max="5" step="0.1" value="0">
@@ -208,47 +218,51 @@
                             <div style="flex:1.5; border-left: 2px solid #c7d2fe; padding-left: 15px;">
                                 <label style="font-size: 0.9rem; font-weight: bold; color: var(--primary-color);">💡 纸盒封顶建议</label>
                                 <p id="lid-recommendation-value" style="font-weight:bold; margin: 5px 0;">等待图片...</p>
-                                <p id="lid-recommendation-text" style="font-size:0.8rem; color:#666; margin: 0; line-height: 1.4;">（根据中心区域明暗自动判断）</p>
+                                <p id="lid-recommendation-text" style="font-size:0.8rem; color:#666; margin: 0; line-height: 1.4;">（根据图案中心明暗自动判断）</p>
                             </div>
                         </div>
                     </div>
                     
-                    <button class="btn btn-primary" id="process-btn" style="width: 100%; margin-top: 20px; font-size:1.1rem; padding: 16px;"><i class="fas fa-magic"></i> 渲染 3D 预览与剪裁图纸</button>
+                    <button class="btn btn-primary" id="process-btn" style="width: 100%; margin-top: 20px; font-size:1.1rem; padding: 16px;"><i class="fas fa-magic"></i> 生成预览与图纸</button>
                 </div>
             </div>
             
             <div class="right-column">
                 <div class="card">
-                    <h2 style="font-size: 1.2rem; margin-bottom: 10px;"><i class="fas fa-eye"></i> 实时 3D 预览</h2>
-                    <p style="font-size:0.8rem; color:#666; margin-bottom:10px;">调节左侧数值，右侧即时响应。鼠标左键旋转，滚轮缩放。</p>
+                    <h2 style="font-size: 1.2rem; margin-bottom: 10px;"><i class="fas fa-eye"></i> 效果预览</h2>
+                    <p style="font-size:0.8rem; color:#666; margin-bottom:10px;">调节左侧数值，右侧即时响应。鼠标左键可旋转，滚轮可缩放。</p>
                     <div id="threejs-container"></div>
                 </div>
                 
                 <div class="card">
-                    <h2 style="font-size: 1.2rem; margin-bottom: 10px;"><i class="fas fa-print"></i> 1:1 打印图纸输出</h2>
+                    <h2 style="font-size: 1.2rem; margin-bottom: 10px;"><i class="fas fa-print"></i> 打印图纸输出</h2>
                     
                     <div id="island-warning">
                         <strong><i class="fas fa-exclamation-triangle"></i> 提示：图案中有悬空部分！</strong>
-                        <p style="margin-top: 3px;">图纸上红色的部分在裁切时会直接掉落。建议反转黑白重试，或在剪纸时手工留纸条相连。</p>
+                        <p style="margin-top: 3px;">图纸上红色的部分在剪裁时会完全掉落。建议反转黑白，或在剪纸时手工留点纸条连着。</p>
                     </div>
 
                     <div class="template-thumbnails">
-                        <div class="template-thumb"><h4>配置说明</h4><canvas id="thumb-cover"></canvas></div>
-                        <div class="template-thumb"><h4>上边</h4><canvas id="thumb-top"></canvas></div>
-                        <div class="template-thumb"><h4>左边</h4><canvas id="thumb-left"></canvas></div>
-                        <div class="template-thumb"><h4>下边</h4><canvas id="thumb-bottom"></canvas></div>
-                        <div class="template-thumb"><h4>右边</h4><canvas id="thumb-right"></canvas></div>
+                        <div class="template-thumb" id="thumb-btn-base" title="点击放大查看"><h4>盒子底面</h4><canvas id="thumb-base"></canvas></div>
+                        <div class="template-thumb" id="thumb-btn-top" title="点击放大查看"><h4>上边墙</h4><canvas id="thumb-top"></canvas></div>
+                        <div class="template-thumb" id="thumb-btn-left" title="点击放大查看"><h4>左边墙</h4><canvas id="thumb-left"></canvas></div>
+                        <div class="template-thumb" id="thumb-btn-bottom" title="点击放大查看"><h4>下边墙</h4><canvas id="thumb-bottom"></canvas></div>
+                        <div class="template-thumb" id="thumb-btn-right" title="点击放大查看"><h4>右边墙</h4><canvas id="thumb-right"></canvas></div>
                     </div>
 
-                    <button class="btn btn-success" id="download-pdf-btn" style="width: 100%; margin-top: 15px;"><i class="fas fa-file-pdf"></i> 下载 PDF 打印图纸 (A4规格)</button>
+                    <button class="btn btn-success" id="download-pdf-btn" style="width: 100%; margin-top: 15px;"><i class="fas fa-file-pdf"></i> 下载 PDF 打印图纸</button>
                 </div>
             </div>
         </div>
     </div>
     
     <div class="hidden-canvas-container" id="hidden-canvases">
-        <canvas id="pdf-cover-canvas"></canvas><canvas id="pdf-top-canvas"></canvas>
-        <canvas id="pdf-left-canvas"></canvas><canvas id="pdf-bottom-canvas"></canvas><canvas id="pdf-right-canvas"></canvas>
+        <canvas id="pdf-cover-canvas"></canvas>
+        <canvas id="pdf-base-canvas"></canvas>
+        <canvas id="pdf-top-canvas"></canvas>
+        <canvas id="pdf-left-canvas"></canvas>
+        <canvas id="pdf-bottom-canvas"></canvas>
+        <canvas id="pdf-right-canvas"></canvas>
     </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -267,6 +281,12 @@
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.header-donate')) document.getElementById('qr-popup').style.display = 'none';
         });
+
+        // 弹窗关闭逻辑
+        const modal = document.getElementById('image-modal');
+        const closeBtn = document.querySelector('.close-btn');
+        closeBtn.onclick = () => modal.style.display = "none";
+        modal.onclick = (e) => { if (e.target === modal) modal.style.display = "none"; };
     </script>
 </body>
 </html>
